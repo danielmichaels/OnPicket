@@ -1,0 +1,9 @@
+package: api
+generate:
+  client: true
+  models: true
+  chi-server: true
+  embedded-spec: true
+compatibility:
+  apply-chi-middleware-first-to-last: true
+output: pkg/api/client.gen.go

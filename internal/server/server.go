@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"github.com/danielmichaels/onpicket/internal/config"
 	"github.com/danielmichaels/onpicket/internal/database"
+	"github.com/danielmichaels/onpicket/internal/version"
+	"github.com/danielmichaels/onpicket/pkg/api"
 	"github.com/rs/zerolog"
 	"net/http"
 	"os"
@@ -24,9 +26,15 @@ type Application struct {
 }
 
 func (app *Application) Serve() error {
+	openapi, err := api.GetSwagger()
+	if err != nil {
+		app.Logger.Fatal().Err(err).Msg("error loading swagger")
+		os.Exit(1)
+	}
+	openapi.Servers = nil
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", app.Config.Server.Port),
-		Handler:      app.routes(),
+		Handler:      app.routes(openapi),
 		IdleTimeout:  app.Config.Server.TimeoutIdle,
 		ReadTimeout:  app.Config.Server.TimeoutRead,
 		WriteTimeout: app.Config.Server.TimeoutWrite,
@@ -52,9 +60,9 @@ func (app *Application) Serve() error {
 		app.wg.Wait()
 		shutdownError <- nil
 	}()
-	app.Logger.Info().Str("server", srv.Addr).Msg("starting server")
+	app.Logger.Info().Str("server", srv.Addr).Str("version", version.Get()).Msg("starting server")
 
-	err := srv.ListenAndServe()
+	err = srv.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
