@@ -11,8 +11,6 @@ import (
 	"net/http"
 )
 
-var si api.ServerInterface = implementApi{}
-
 func (app *Application) routes(openapi *openapi3.T) http.Handler {
 	router := chi.NewRouter()
 	router.Use(app.recoverPanic)
@@ -35,7 +33,7 @@ func (app *Application) routes(openapi *openapi3.T) http.Handler {
 
 	router.Group(func(oapi chi.Router) {
 		oapi.Use(oapimiddleware.OapiRequestValidator(openapi))
-		api.HandlerFromMuxWithBaseURL(si, router, "/api")
+		api.HandlerFromMuxWithBaseURL(app.Api, router, "/api")
 	})
 	return router
 }

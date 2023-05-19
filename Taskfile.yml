@@ -104,3 +104,8 @@ tasks:
       task db:migration:status
     cmds:
       - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} status
+
+  codegen:
+    desc: Run oapi-codegen
+    cmds:
+      - oapi-codegen --config=spec/cfg.yaml spec/oapi-spec.yaml

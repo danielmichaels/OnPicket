@@ -1,9 +1,9 @@
 package server
 
 import (
-	"encoding/json"
-	"fmt"
+	"github.com/danielmichaels/onpicket/internal/request"
 	"github.com/danielmichaels/onpicket/internal/response"
+	"github.com/danielmichaels/onpicket/internal/validator"
 	"github.com/danielmichaels/onpicket/internal/version"
 	"github.com/danielmichaels/onpicket/pkg/api"
 	"net/http"
@@ -29,39 +29,72 @@ func (app *Application) home(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type implementApi struct{}
+type ApiStore struct{}
+type Envelope map[string]any
 
-func (a implementApi) Healthz(w http.ResponseWriter, r *http.Request) {
+func NewApiStore() *ApiStore {
+	return &ApiStore{}
+}
+
+var si api.ServerInterface = NewApiStore()
+//func (a *ApiStore) Error(w http.ResponseWriter, code int, message string, errorInfo map[string]interface{}) {
+func (app *Application) Error(w http.ResponseWriter, code int, message string, errorInfo map[string]interface{}) {
+
+	apiErr := api.Error{
+		Code:   int32(code),
+		Status: message,
+	}
+	if len(errorInfo) != 0 {
+		apiErr.Body = &errorInfo
+	}
+	w.WriteHeader(code)
+	_ = response.JSON(w, code, apiErr)
+}
+
+func (app *Application) apiValidationError(w http.ResponseWriter, errors string, errorInfo map[string]interface{}) {
+	ei := Envelope{"detail": errorInfo}
+	app.Error(w, http.StatusUnprocessableEntity, errors, ei)
+}
+
+func (app *Application) Healthz(w http.ResponseWriter, r *http.Request) {
 	health := api.Healthz{
 		Status:  "OK",
 		Version: version.Get(),
 	}
-	_ = JSON(w, http.StatusOK, health)
+	app.Error(w, 404, "an error", nil)
+	return
+	_ = response.JSON(w, http.StatusOK, health)
 }
 
-func (a implementApi) ListUsers(w http.ResponseWriter, r *http.Request) {
-	//TODO implement me
-	fmt.Println("users endpoint")
-}
-func JSON(w http.ResponseWriter, status int, data any) error {
-	return JSONWithHeaders(w, status, data, nil)
+var users = []api.User{
+	{Timezone: "AU", Username: "Admin User"},
+	{Timezone: "EU", Username: "Standard User"},
 }
 
-func JSONWithHeaders(w http.ResponseWriter, status int, data any, headers http.Header) error {
-	js, err := json.MarshalIndent(data, "", "\t")
+func (a *ApiStore) ListUsers(w http.ResponseWriter, r *http.Request) {
+	_ = response.JSON(w, http.StatusOK, users)
+}
+func (app *Application) CreateUser(w http.ResponseWriter, r *http.Request) {
+	var newUser api.UserBody
+	err := request.DecodeJSON(w, r, &newUser)
 	if err != nil {
-		return err
+		app.Error(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+	v := validator.Validator{}
+	v.CheckField(newUser.Password2 != "", "password2", "password2 not found")
+	v.Check(newUser.Password2 != "", "password2 not found")
+	if v.HasErrors() {
+		a.apiValidationError(w, "validation failed", v.FieldErrors)
+		//app.
+		//return
+	//}
+	user := api.User{
+		Username: newUser.Username,
+		Timezone: newUser.Timezone,
 	}
 
-	js = append(js, '\n')
+	users = append(users, user)
 
-	for key, value := range headers {
-		w.Header()[key] = value
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	w.Write(js)
-
-	return nil
+	_ = response.JSON(w, http.StatusCreated, user)
 }

@@ -23,6 +23,7 @@ type Application struct {
 	wg       sync.WaitGroup
 	RouteDoc bool
 	Models   *database.Queries
+	Api      *ApiStore
 }
 
 func (app *Application) Serve() error {

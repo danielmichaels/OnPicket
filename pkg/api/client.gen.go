@@ -20,6 +20,17 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// Error defines model for Error.
+type Error struct {
+	Body *map[string]interface{} `json:"body,omitempty"`
+
+	// Code Error code
+	Code int32 `json:"code"`
+
+	// Status Error message
+	Status string `json:"status"`
+}
+
 // Healthz defines model for Healthz.
 type Healthz struct {
 	Status  string `json:"status"`
@@ -28,21 +39,23 @@ type Healthz struct {
 
 // NewUser defines model for NewUser.
 type NewUser struct {
-	Password1 *string `json:"password1,omitempty"`
-	Password2 *string `json:"password2,omitempty"`
-	Timezone  *string `json:"timezone,omitempty"`
-	Username  *string `json:"username,omitempty"`
+	Password1 string `json:"password1"`
+	Password2 string `json:"password2"`
+	Timezone  string `json:"timezone"`
+	Username  string `json:"username"`
 }
 
 // User defines model for User.
 type User struct {
-	// Id Unqiue id of User
-	Id        int64   `json:"id"`
-	Password1 *string `json:"password1,omitempty"`
-	Password2 *string `json:"password2,omitempty"`
-	Timezone  *string `json:"timezone,omitempty"`
-	Username  *string `json:"username,omitempty"`
+	Timezone string `json:"timezone"`
+	Username string `json:"username"`
 }
+
+// UserBody defines model for UserBody.
+type UserBody = NewUser
+
+// CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
+type CreateUserJSONRequestBody = NewUser
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -122,6 +135,11 @@ type ClientInterface interface {
 
 	// ListUsers request
 	ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateUser request with any body
+	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -138,6 +156,30 @@ func (c *Client) Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*h
 
 func (c *Client) ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListUsersRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUserRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateUserRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +244,46 @@ func NewListUsersRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewCreateUserRequest calls the generic CreateUser builder with application/json body
+func NewCreateUserRequest(server string, body CreateUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateUserRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateUserRequestWithBody generates requests for CreateUser with any type of body
+func NewCreateUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/users")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -250,6 +332,11 @@ type ClientWithResponsesInterface interface {
 
 	// ListUsers request
 	ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
+
+	// CreateUser request with any body
+	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
+
+	CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
 }
 
 type HealthzResponse struct {
@@ -278,6 +365,7 @@ type ListUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]User
+	JSONDefault  *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -290,6 +378,29 @@ func (r ListUsersResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ListUsersResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *User
+	JSONDefault  *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateUserResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -312,6 +423,23 @@ func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, reqEdit
 		return nil, err
 	}
 	return ParseListUsersResponse(rsp)
+}
+
+// CreateUserWithBodyWithResponse request with arbitrary body returning *CreateUserResponse
+func (c *ClientWithResponses) CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
+	rsp, err := c.CreateUserWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUserResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
+	rsp, err := c.CreateUser(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateUserResponse(rsp)
 }
 
 // ParseHealthzResponse parses an HTTP response from a HealthzWithResponse call
@@ -361,6 +489,46 @@ func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateUserResponse parses an HTTP response from a CreateUserWithResponse call
+func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
 	}
 
 	return response, nil
@@ -374,6 +542,9 @@ type ServerInterface interface {
 	// Return all users
 	// (GET /users)
 	ListUsers(w http.ResponseWriter, r *http.Request)
+	// Create a new user
+	// (POST /users)
+	CreateUser(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -406,6 +577,21 @@ func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Requ
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListUsers(w, r)
+	})
+
+	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
+		handler = siw.HandlerMiddlewares[i](handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// CreateUser operation middleware
+func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateUser(w, r)
 	})
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -534,6 +720,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/users", wrapper.ListUsers)
 	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/users", wrapper.CreateUser)
+	})
 
 	return r
 }
@@ -541,15 +730,18 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7xSwY7TMBD9FWvgGOJsQRx8W6GVqLTaXYF6WvVgOZPGrGN77QlRW+XfkZ2mhRLgxiW2",
-	"8t543nszR1Cu886ipQjiCFG12Ml8/YzSUHtIVx+cx0AaJw5J6vON9h5BQKSg7Q7GAr5jiNrZBWwsIOBr",
-	"rwPWIJ7nNy4V27GABxw2EcPvHb2McXChvllsOqOrRZR0hwdncRHsIwYrO/y34MxKImeF0pjHBsTzEd4G",
-	"bEDAG36Jkp9y5LOlsbj2pOv0rTGqoD3l0GBjX3WPTNfMNSzXFdC40EkCAdrSxw9QzDq1Jdyll6+E6hq2",
-	"43ZMv7VtXGpitEIbs8nJLNx6qVpkq7KCAvpgQEBL5KPgfBiGUma4dGHHT7WR368/3T18vXu3Kquypc5M",
-	"2ZJJzz3aJ61ekNjt0/qnmQqoyqq8SUzn0UqvQcD7sspdvaQ2B8Hby6LtkNKRcpIpk3UN4ryIyWf0LqlJ",
-	"pFVVpUM5S2hzmfTeaJUL+bc4reE0iBw4YZcL/zavudeYA/x1OhPG0NbeaUs5+dh3nQz7M6paVC9nCmtc",
-	"YNRiziXReVq4+Een9zrSJjP+h9fTYs4LJUOQe1jwnXhslnPl+gtSHyyTxrDJWgruRwAAAP//ZUr4p1UE",
-	"AAA=",
+	"H4sIAAAAAAAC/8xVUU/jOBD+K9bcPeaSUu4kyBsgpGPFAlrEE+qDcaaNIbG99oRuQfnvq3HSpmzTRSuh",
+	"1b5Znm+++WbGnnkFZWtnDRoKkL+Cx68NBjq1hcZ4cRfQn9pixWdlDaEhPkrnKq0kaWuyx2AN3wVVYi35",
+	"9LfHOeTwVzaQZ501ZFe4ZE5o2zaBAoPy2jEN5PDp9vpK2LkwuBQNY5KoR3ssICffILv0PBzm3Hvr+eC8",
+	"deipl/zQy6WVQ8jBPjyiImgTULZANryNGllEtCUwt76WBDloQ4dTSNYk2hAuWHUCgSQ1YR9PjSHIBQ6e",
+	"gbw2C2DpQzL30MfryWbJrtr/UVZUvuzmNwj4IUQCz+iD7rrx8/A9x+AxpmDdqh0FToawtL44GBWxtk5H",
+	"raRrfLEGR43cdSNrfD+BDXKLMdkSti1j1iYwnsgHidlSsHGaxQeuzdyyf6UVmhCpOko4cVKVKKbphL18",
+	"BTmURC7kWbZcLlMZzan1i6z3Ddnlxdn51e35P9N0kpZUV105qWK6a3Oj1ROSOLm52GprDpN0kh4w0jo0",
+	"0mnI4TCdxKhOUhnLkJXDW1tg/OBcpfi9LwrIN2+R0w7OshoGTSeTX5oLmrAO7w2Idax2ZEJ0NoGmcFYb",
+	"io0ITV1Lv9pYVYnqaQMRc+sFlRjrwvCMOxT2ZnqpA91FxO/ItZuEm68nvZerscnIOLGWA9E8l01FHzaV",
+	"u1E6FtngN4eKsBDYY7ZL/gWp8UbIqhJdXfn/2zBS2DOPkvBuGOvdmlntU/ZmE2WbNdTutOXgw4qwby/t",
+	"VP/f7i28RZ3KQvSiO8x/u5jPSKUthLH8LhtT/Emt7Bok5LB+I0dA/xw/zP3r1pjKs6yySlalDZQfHx0f",
+	"ZTxa2ln7PQAA//8u22q4UQgAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
