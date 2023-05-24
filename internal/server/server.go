@@ -17,13 +17,19 @@ import (
 	"time"
 )
 
+type Envelope map[string]any
+
+// Application is the applications main struct. It holds references to
+// all the methods and handlers of this application.
 type Application struct {
-	Config   *config.Conf
-	Logger   zerolog.Logger
-	wg       sync.WaitGroup
-	RouteDoc bool
-	Models   *database.Queries
-	Api      *ApiStore
+	Api *api.ServerInterface
+	S
+}
+type S struct {
+	Config *config.Conf
+	Logger zerolog.Logger
+	WG     *sync.WaitGroup
+	Models *database.Queries
 }
 
 func (app *Application) Serve() error {
@@ -58,7 +64,7 @@ func (app *Application) Serve() error {
 		}
 		app.Logger.Warn().Str("tasks", srv.Addr).Msg("completing background tasks")
 		// Call wait so that the wait group can decrement to zero.
-		app.wg.Wait()
+		app.WG.Wait()
 		shutdownError <- nil
 	}()
 	app.Logger.Info().Str("server", srv.Addr).Str("version", version.Get()).Msg("starting server")

@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/httplog"
 	_ "github.com/mattn/go-sqlite3"
 	"log"
+	"sync"
 )
 
 func main() {
@@ -31,12 +32,16 @@ func run() error {
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to open database. exiting")
 	}
-	var si api.ServerInterface = server.ApiStore{}
-	app := &server.Application{
+	s := server.S{
 		Config: cfg,
 		Logger: logger,
 		Models: database.New(db),
-		Api:    si,
+		WG:     &sync.WaitGroup{},
+	}
+	var si api.ServerInterface = &server.Application{}
+	app := &server.Application{
+		Api: &si,
+		S:   s,
 		//Api: server.NewApiStore(),
 	}
 	err = app.Serve()

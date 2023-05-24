@@ -21,19 +21,19 @@ paths:
               schema:
                 items:
                   $ref: '#/components/schemas/Healthz'
-  /users:
+  /scans:
     get:
-      summary: Return all users
-      operationId: listUsers
+      summary: Return all scans
+      operationId: listScans
       responses:
         '200':
-          description: User response
+          description: Scan list response
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/User'
+                  $ref: '#/components/schemas/Scan'
         default:
           description: Unexpected error
           content:
@@ -41,17 +41,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
     post:
-      summary: Create a new user
-      operationId: createUser
+      summary: Create a new Scan
+      operationId: createScan
       requestBody:
-        $ref: '#/components/requestBodies/UserBody'
+        $ref: '#/components/requestBodies/ScanBody'
       responses:
         '201':
-          description: User response
+          description: Scan response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: '#/components/schemas/Scan'
         '405':
           description: Method not found
         '400':
@@ -67,30 +67,25 @@ paths:
 
 components:
   schemas:
-    User:
+    Scan:
       required:
-        - timezone
-        - username
+        - host
+        - ports
+#        - description
       properties:
-        timezone:
+        host:
           type: string
-        username:
-          type: string
-    NewUser:
+        ports:
+          type: array
+    NewScan:
       required:
-        - username
-        - timezone
-        - password1
-        - password2
+        - host
+        - ports
       properties:
-        username:
+        host:
           type: string
-        timezone:
-          type: string
-        password1:
-          type: string
-        password2:
-          type: string
+        ports:
+          type: array
 
     Error:
       type: object
@@ -119,10 +114,10 @@ components:
         version:
           type: string
   requestBodies:
-    UserBody:
-      description: JSON of new user
+    ScanBody:
+      description: JSON of new Scan
       required: true
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/NewUser'
+            $ref: '#/components/schemas/NewScan'

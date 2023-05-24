@@ -37,25 +37,23 @@ type Healthz struct {
 	Version string `json:"version"`
 }
 
-// NewUser defines model for NewUser.
-type NewUser struct {
-	Password1 string `json:"password1"`
-	Password2 string `json:"password2"`
-	Timezone  string `json:"timezone"`
-	Username  string `json:"username"`
+// NewScan defines model for NewScan.
+type NewScan struct {
+	Host  string        `json:"host"`
+	Ports []interface{} `json:"ports"`
 }
 
-// User defines model for User.
-type User struct {
-	Timezone string `json:"timezone"`
-	Username string `json:"username"`
+// Scan defines model for Scan.
+type Scan struct {
+	Host  string        `json:"host"`
+	Ports []interface{} `json:"ports"`
 }
 
-// UserBody defines model for UserBody.
-type UserBody = NewUser
+// ScanBody defines model for ScanBody.
+type ScanBody = NewScan
 
-// CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
-type CreateUserJSONRequestBody = NewUser
+// CreateScanJSONRequestBody defines body for CreateScan for application/json ContentType.
+type CreateScanJSONRequestBody = NewScan
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -133,13 +131,13 @@ type ClientInterface interface {
 	// Healthz request
 	Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListUsers request
-	ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ListScans request
+	ListScans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateUser request with any body
-	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// CreateScan request with any body
+	CreateScanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	CreateScan(ctx context.Context, body CreateScanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -154,8 +152,8 @@ func (c *Client) Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*h
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListUsersRequest(c.Server)
+func (c *Client) ListScans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListScansRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -166,8 +164,8 @@ func (c *Client) ListUsers(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserRequestWithBody(c.Server, contentType, body)
+func (c *Client) CreateScanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScanRequestWithBody(c.Server, contentType, body)
 	if err != nil {
 		return nil, err
 	}
@@ -178,8 +176,8 @@ func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateUserRequest(c.Server, body)
+func (c *Client) CreateScan(ctx context.Context, body CreateScanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateScanRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -217,8 +215,8 @@ func NewHealthzRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewListUsersRequest generates requests for ListUsers
-func NewListUsersRequest(server string) (*http.Request, error) {
+// NewListScansRequest generates requests for ListScans
+func NewListScansRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -226,7 +224,7 @@ func NewListUsersRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users")
+	operationPath := fmt.Sprintf("/scans")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -244,19 +242,19 @@ func NewListUsersRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewCreateUserRequest calls the generic CreateUser builder with application/json body
-func NewCreateUserRequest(server string, body CreateUserJSONRequestBody) (*http.Request, error) {
+// NewCreateScanRequest calls the generic CreateScan builder with application/json body
+func NewCreateScanRequest(server string, body CreateScanJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewCreateUserRequestWithBody(server, "application/json", bodyReader)
+	return NewCreateScanRequestWithBody(server, "application/json", bodyReader)
 }
 
-// NewCreateUserRequestWithBody generates requests for CreateUser with any type of body
-func NewCreateUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+// NewCreateScanRequestWithBody generates requests for CreateScan with any type of body
+func NewCreateScanRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -264,7 +262,7 @@ func NewCreateUserRequestWithBody(server string, contentType string, body io.Rea
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/users")
+	operationPath := fmt.Sprintf("/scans")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -330,13 +328,13 @@ type ClientWithResponsesInterface interface {
 	// Healthz request
 	HealthzWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthzResponse, error)
 
-	// ListUsers request
-	ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
+	// ListScans request
+	ListScansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListScansResponse, error)
 
-	// CreateUser request with any body
-	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
+	// CreateScan request with any body
+	CreateScanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScanResponse, error)
 
-	CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
+	CreateScanWithResponse(ctx context.Context, body CreateScanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScanResponse, error)
 }
 
 type HealthzResponse struct {
@@ -361,15 +359,15 @@ func (r HealthzResponse) StatusCode() int {
 	return 0
 }
 
-type ListUsersResponse struct {
+type ListScansResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]User
+	JSON200      *[]Scan
 	JSONDefault  *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r ListUsersResponse) Status() string {
+func (r ListScansResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -377,22 +375,22 @@ func (r ListUsersResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r ListUsersResponse) StatusCode() int {
+func (r ListScansResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
 }
 
-type CreateUserResponse struct {
+type CreateScanResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *User
+	JSON201      *Scan
 	JSONDefault  *Error
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateUserResponse) Status() string {
+func (r CreateScanResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -400,7 +398,7 @@ func (r CreateUserResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateUserResponse) StatusCode() int {
+func (r CreateScanResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -416,30 +414,30 @@ func (c *ClientWithResponses) HealthzWithResponse(ctx context.Context, reqEditor
 	return ParseHealthzResponse(rsp)
 }
 
-// ListUsersWithResponse request returning *ListUsersResponse
-func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListUsersResponse, error) {
-	rsp, err := c.ListUsers(ctx, reqEditors...)
+// ListScansWithResponse request returning *ListScansResponse
+func (c *ClientWithResponses) ListScansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListScansResponse, error) {
+	rsp, err := c.ListScans(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseListUsersResponse(rsp)
+	return ParseListScansResponse(rsp)
 }
 
-// CreateUserWithBodyWithResponse request with arbitrary body returning *CreateUserResponse
-func (c *ClientWithResponses) CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
-	rsp, err := c.CreateUserWithBody(ctx, contentType, body, reqEditors...)
+// CreateScanWithBodyWithResponse request with arbitrary body returning *CreateScanResponse
+func (c *ClientWithResponses) CreateScanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScanResponse, error) {
+	rsp, err := c.CreateScanWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateUserResponse(rsp)
+	return ParseCreateScanResponse(rsp)
 }
 
-func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error) {
-	rsp, err := c.CreateUser(ctx, body, reqEditors...)
+func (c *ClientWithResponses) CreateScanWithResponse(ctx context.Context, body CreateScanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScanResponse, error) {
+	rsp, err := c.CreateScan(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseCreateUserResponse(rsp)
+	return ParseCreateScanResponse(rsp)
 }
 
 // ParseHealthzResponse parses an HTTP response from a HealthzWithResponse call
@@ -468,22 +466,22 @@ func ParseHealthzResponse(rsp *http.Response) (*HealthzResponse, error) {
 	return response, nil
 }
 
-// ParseListUsersResponse parses an HTTP response from a ListUsersWithResponse call
-func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
+// ParseListScansResponse parses an HTTP response from a ListScansWithResponse call
+func ParseListScansResponse(rsp *http.Response) (*ListScansResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &ListUsersResponse{
+	response := &ListScansResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []User
+		var dest []Scan
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -501,22 +499,22 @@ func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 	return response, nil
 }
 
-// ParseCreateUserResponse parses an HTTP response from a CreateUserWithResponse call
-func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
+// ParseCreateScanResponse parses an HTTP response from a CreateScanWithResponse call
+func ParseCreateScanResponse(rsp *http.Response) (*CreateScanResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateUserResponse{
+	response := &CreateScanResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest User
+		var dest Scan
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -539,12 +537,12 @@ type ServerInterface interface {
 	// Healthcheck endpoint for the API
 	// (GET /healthz)
 	Healthz(w http.ResponseWriter, r *http.Request)
-	// Return all users
-	// (GET /users)
-	ListUsers(w http.ResponseWriter, r *http.Request)
-	// Create a new user
-	// (POST /users)
-	CreateUser(w http.ResponseWriter, r *http.Request)
+	// Return all scans
+	// (GET /scans)
+	ListScans(w http.ResponseWriter, r *http.Request)
+	// Create a new Scan
+	// (POST /scans)
+	CreateScan(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -571,12 +569,12 @@ func (siw *ServerInterfaceWrapper) Healthz(w http.ResponseWriter, r *http.Reques
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// ListUsers operation middleware
-func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Request) {
+// ListScans operation middleware
+func (siw *ServerInterfaceWrapper) ListScans(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListUsers(w, r)
+		siw.Handler.ListScans(w, r)
 	})
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -586,12 +584,12 @@ func (siw *ServerInterfaceWrapper) ListUsers(w http.ResponseWriter, r *http.Requ
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// CreateUser operation middleware
-func (siw *ServerInterfaceWrapper) CreateUser(w http.ResponseWriter, r *http.Request) {
+// CreateScan operation middleware
+func (siw *ServerInterfaceWrapper) CreateScan(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.CreateUser(w, r)
+		siw.Handler.CreateScan(w, r)
 	})
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -718,10 +716,10 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/healthz", wrapper.Healthz)
 	})
 	r.Group(func(r chi.Router) {
-		r.Get(options.BaseURL+"/users", wrapper.ListUsers)
+		r.Get(options.BaseURL+"/scans", wrapper.ListScans)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/users", wrapper.CreateUser)
+		r.Post(options.BaseURL+"/scans", wrapper.CreateScan)
 	})
 
 	return r
@@ -730,18 +728,17 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xVUU/jOBD+K9bcPeaSUu4kyBsgpGPFAlrEE+qDcaaNIbG99oRuQfnvq3HSpmzTRSuh",
-	"1b5Znm+++WbGnnkFZWtnDRoKkL+Cx68NBjq1hcZ4cRfQn9pixWdlDaEhPkrnKq0kaWuyx2AN3wVVYi35",
-	"9LfHOeTwVzaQZ501ZFe4ZE5o2zaBAoPy2jEN5PDp9vpK2LkwuBQNY5KoR3ssICffILv0PBzm3Hvr+eC8",
-	"deipl/zQy6WVQ8jBPjyiImgTULZANryNGllEtCUwt76WBDloQ4dTSNYk2hAuWHUCgSQ1YR9PjSHIBQ6e",
-	"gbw2C2DpQzL30MfryWbJrtr/UVZUvuzmNwj4IUQCz+iD7rrx8/A9x+AxpmDdqh0FToawtL44GBWxtk5H",
-	"raRrfLEGR43cdSNrfD+BDXKLMdkSti1j1iYwnsgHidlSsHGaxQeuzdyyf6UVmhCpOko4cVKVKKbphL18",
-	"BTmURC7kWbZcLlMZzan1i6z3Ddnlxdn51e35P9N0kpZUV105qWK6a3Oj1ROSOLm52GprDpN0kh4w0jo0",
-	"0mnI4TCdxKhOUhnLkJXDW1tg/OBcpfi9LwrIN2+R0w7OshoGTSeTX5oLmrAO7w2Idax2ZEJ0NoGmcFYb",
-	"io0ITV1Lv9pYVYnqaQMRc+sFlRjrwvCMOxT2ZnqpA91FxO/ItZuEm68nvZerscnIOLGWA9E8l01FHzaV",
-	"u1E6FtngN4eKsBDYY7ZL/gWp8UbIqhJdXfn/2zBS2DOPkvBuGOvdmlntU/ZmE2WbNdTutOXgw4qwby/t",
-	"VP/f7i28RZ3KQvSiO8x/u5jPSKUthLH8LhtT/Emt7Bok5LB+I0dA/xw/zP3r1pjKs6yySlalDZQfHx0f",
-	"ZTxa2ln7PQAA//8u22q4UQgAAA==",
+	"H4sIAAAAAAAC/8xVT0/cPhD9Ktb8fsc0WZZWAt8AIZWKAuqqJ8TBOLMbQ2K79qTbLcp3r8bJ/oHdbVUJ",
+	"od6izJv33szY4yfQrvHOoqUI8gkCfmsx0qkrDaYfE63sqSsX/K2dJbTEn8r72mhFxtniITrL/6KusFH8",
+	"9X/AKUj4r1iTF300Flc4Z07oui6DEqMOxjMNSPg0ub4SbioszkXCZMmPCViCpNAipww8LHMeggv84YPz",
+	"GGiwfD/YpYVHkODuH1ATdBloVyIHnqsmFpFiGUxdaBSBBGPpcAzZksRYwhkGZomkqI37eBqMUc1wnRkp",
+	"GDsDtr4u5hYGvYHsLtt2+xFVTdXP7frWBl5IZPAdQzT9NH4vP3CsM3Y5WI5qy0HlIu3U9y7QpjMVglps",
+	"iaf0Jfiuy+AtVDhs7NRxXm002pjOglUNU5x4pSsU43wEGbShBgkVkY+yKObzea5SOHdhVgy5sbi8ODu/",
+	"mpy/G+ejvKKmZmdkqGa6a3tj9COSOLm52GiyhFE+yg8Y6Txa5Q1IOMxHSdUrqlJVRbWe/AxTC7gt6bJd",
+	"lCBXJ4Prjd6xGwaNR6O/uqWGsIl/uq5LrW7Hfe1jAm3pnbGUJhDbplFhsYrqCvXjCiKmLgiqMPWF4UXU",
+	"ysa9lV6aSJOEeIta+72UvTxWW3UzTtQmklh6goSZqramV1uU/XbbIf/V4g+PmrAUOGA2+/4FqQ1WqLoW",
+	"fXPTjYk7unsWUBFubNp+8y/2OXv2OBSrl6Hbms3BqzVh31ORRrDZ/ff9gXiOOlWlGEz3mA/bmM9IlSuF",
+	"dXw4W1v+S6PsByTU+kVMHBEDbxSQt08bu0oWRe20qnnvyeOj46OC90t31/0KAAD//6NXGGbkBwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

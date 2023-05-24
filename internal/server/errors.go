@@ -3,10 +3,22 @@ package server
 import (
 	"fmt"
 	"github.com/danielmichaels/onpicket/internal/response"
-	"github.com/danielmichaels/onpicket/internal/validator"
+	"github.com/danielmichaels/onpicket/pkg/api"
 	"net/http"
 	"strings"
 )
+
+func (app *Application) Error(w http.ResponseWriter, code int, message string, errorInfo map[string]interface{}) {
+	apiErr := api.Error{
+		Code:   int32(code),
+		Status: message,
+	}
+	if len(errorInfo) != 0 {
+		apiErr.Body = &errorInfo
+	}
+	w.WriteHeader(code)
+	_ = response.JSON(w, code, apiErr)
+}
 
 func (app *Application) errorMessage(w http.ResponseWriter, r *http.Request, status int, message string, headers http.Header) {
 	message = strings.ToUpper(message[:1]) + message[1:]
@@ -39,11 +51,8 @@ func (app *Application) badRequest(w http.ResponseWriter, r *http.Request, err e
 	app.errorMessage(w, r, http.StatusBadRequest, err.Error(), nil)
 }
 
-func (app *Application) failedValidation(w http.ResponseWriter, r *http.Request, v validator.Validator) {
-	err := response.JSON(w, http.StatusUnprocessableEntity, v)
-	if err != nil {
-		app.serverError(w, r, err)
-	}
+func (app *Application) apiValidationError(w http.ResponseWriter, errors string, errorInfo map[string]interface{}) {
+	app.Error(w, http.StatusUnprocessableEntity, errors, Envelope{"fields": errorInfo})
 }
 
 func (app *Application) invalidAuthenticationToken(w http.ResponseWriter, r *http.Request) {
