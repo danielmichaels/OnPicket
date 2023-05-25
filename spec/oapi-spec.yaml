@@ -69,23 +69,54 @@ components:
   schemas:
     Scan:
       required:
+        - id
         - host
         - ports
-#        - description
+        - description
+        - type
+        - status
       properties:
+        id:
+          type: string
         host:
           type: string
         ports:
           type: array
+          items:
+            type: string
+        type:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+            - complete
+            - scheduled
+            - in_progress
+            - failed
+
     NewScan:
       required:
         - host
         - ports
+        - description
+        - type
+        - status
       properties:
         host:
           type: string
         ports:
           type: array
+          items:
+            type: string
+        type:
+          type: string
+          enum:
+            - port_scan
+            - service_discovery
+        description:
+          type: string
 
     Error:
       type: object

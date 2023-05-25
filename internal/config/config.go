@@ -20,13 +20,7 @@ type limiter struct {
 }
 
 type dbConf struct {
-	DbCollection       string `env:"DATABASE_COLLECTION,default=domain"`
-	DbName             string `env:"DATABASE_NAME,default=openrecce"`
-	DbNameAuth         string `env:"DATABASE_NAME,default=admin"`
-	DbUsername         string `env:"DATABASE_USERNAME,default=root"`
-	DbPassword         string `env:"DATABASE_PASSWORD,default=root"`
-	DbConnectionString string `env:"DATABASE_CONNECTION_STRING,default=mongodb.services"`
-	DbPort             int    `env:"DATABASE_PORT,default=27017"`
+	DbName string `env:"DATABASE_NAME,default=./data/data.db"`
 }
 type serverConf struct {
 	Port         int           `env:"SERVER_PORT,default=9898"`

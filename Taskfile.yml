@@ -4,7 +4,7 @@ version: '3'
 
 vars:
   PROJECT: "onpicket"
-  DB_NAME: "{{.PROJECT}}-data.db"
+  DB_NAME: "data.db"
 
 env:
   CGO_ENABLED: 1
@@ -17,11 +17,6 @@ tasks:
     cmds:
       - task --list-all
     silent: true
-
-  check:
-    desc: Check required binaries exist in the users $PATH
-    cmds:
-      - command -v faas-cli >/dev/null 2>&1  || echo "faas-cli not installed"
 
   dev:
     desc: Run the local development server; requires cosmtrek/air
