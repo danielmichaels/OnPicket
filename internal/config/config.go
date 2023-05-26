@@ -11,6 +11,7 @@ type Conf struct {
 	Db      dbConf
 	Limiter limiter
 	AppConf appConf
+	Nats    natsConf
 }
 
 type limiter struct {
@@ -21,6 +22,10 @@ type limiter struct {
 
 type dbConf struct {
 	DbName string `env:"DATABASE_NAME,default=./data/data.db"`
+}
+
+type natsConf struct {
+	URI string `env:"NATS_URI,default=nats://0.0.0.0:4222/"`
 }
 type serverConf struct {
 	Port         int           `env:"SERVER_PORT,default=9898"`

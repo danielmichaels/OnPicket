@@ -3,7 +3,9 @@ package server
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	natsio "github.com/danielmichaels/onpicket/internal/nats"
 	"github.com/danielmichaels/onpicket/internal/request"
 	"github.com/danielmichaels/onpicket/internal/response"
 	"github.com/danielmichaels/onpicket/internal/validator"
@@ -15,7 +17,7 @@ import (
 // generateName creates a random name for use in identifiers
 func generateName(s string) string {
 	b := make([]byte, 4)
-	rand.Read(b)
+	_, _ = rand.Read(b)
 	return fmt.Sprintf("%s-%s", s, hex.EncodeToString(b))
 }
 
@@ -69,5 +71,15 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 
 	scans = append(scans, scan)
 
-	_ = response.JSON(w, http.StatusCreated, scan)
+	// poc
+	// publish message to NATS
+	data, _ := json.Marshal(scan)
+	err = app.Nats.Conn.Publish(natsio.ScanStartSubj, data)
+	if err != nil {
+		app.serverError(w, r, err)
+		return
+	}
+
+	_ = response.JSON(w, http.StatusCreated, nil)
+	// _ = response.JSON(w, http.StatusCreated, scan)
 }

@@ -47,29 +47,29 @@ func (app *Application) methodNotAllowed(w http.ResponseWriter, r *http.Request)
 	app.errorMessage(w, r, http.StatusMethodNotAllowed, message, nil)
 }
 
-func (app *Application) badRequest(w http.ResponseWriter, r *http.Request, err error) {
-	app.errorMessage(w, r, http.StatusBadRequest, err.Error(), nil)
-}
+//func (app *Application) badRequest(w http.ResponseWriter, r *http.Request, err error) {
+//	app.errorMessage(w, r, http.StatusBadRequest, err.Error(), nil)
+//}
 
 func (app *Application) apiValidationError(w http.ResponseWriter, errors string, errorInfo map[string]interface{}) {
 	app.Error(w, http.StatusUnprocessableEntity, errors, Envelope{"fields": errorInfo})
 }
 
-func (app *Application) invalidAuthenticationToken(w http.ResponseWriter, r *http.Request) {
-	headers := make(http.Header)
-	headers.Set("WWW-Authenticate", "Bearer")
+//func (app *Application) invalidAuthenticationToken(w http.ResponseWriter, r *http.Request) {
+//	headers := make(http.Header)
+//	headers.Set("WWW-Authenticate", "Bearer")
+//
+//	app.errorMessage(w, r, http.StatusUnauthorized, "Invalid authentication token", headers)
+//}
 
-	app.errorMessage(w, r, http.StatusUnauthorized, "Invalid authentication token", headers)
-}
-
-func (app *Application) authenticationRequired(w http.ResponseWriter, r *http.Request) {
-	app.errorMessage(w, r, http.StatusUnauthorized, "You must be authenticated to access this resource", nil)
-}
-
-func (app *Application) basicAuthenticationRequired(w http.ResponseWriter, r *http.Request) {
-	headers := make(http.Header)
-	headers.Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
-
-	message := "You must be authenticated to access this resource"
-	app.errorMessage(w, r, http.StatusUnauthorized, message, headers)
-}
+//func (app *Application) authenticationRequired(w http.ResponseWriter, r *http.Request) {
+//	app.errorMessage(w, r, http.StatusUnauthorized, "You must be authenticated to access this resource", nil)
+//}
+//
+//func (app *Application) basicAuthenticationRequired(w http.ResponseWriter, r *http.Request) {
+//	headers := make(http.Header)
+//	headers.Set("WWW-Authenticate", `Basic realm="restricted", charset="UTF-8"`)
+//
+//	message := "You must be authenticated to access this resource"
+//	app.errorMessage(w, r, http.StatusUnauthorized, message, headers)
+//}

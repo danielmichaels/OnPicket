@@ -3,11 +3,13 @@ package funcs
 import (
 	"bytes"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"html/template"
 	"math"
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 
@@ -225,4 +227,22 @@ func toInt64(i any) (int64, error) {
 	}
 
 	return 0, fmt.Errorf("unable to convert type %T to int", i)
+}
+func BackgroundFunc(fn func()) {
+	// Launch a background goroutine.
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		// Recover any panic.
+		defer func() {
+			if err := recover(); err != nil {
+				log.Warn().Msgf("background-task err")
+			}
+		}()
+
+		// Execute the arbitrary function that we passed as the parameter.
+		wg.Done()
+		fn()
+	}()
+	wg.Wait()
 }

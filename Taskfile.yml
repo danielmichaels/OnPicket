@@ -104,3 +104,14 @@ tasks:
     desc: Run oapi-codegen
     cmds:
       - oapi-codegen --config=spec/cfg.yaml spec/oapi-spec.yaml
+  nats:
+    desc: |
+      Run the local NATS box in detached mode
+    cmds:
+      - docker run --name nats --rm -d -p 4222:4222 -p 8222:8222 nats --http_port 8222
+
+  nats-box:
+    desc: |
+      Run the interactive natsio/nats-box
+    cmds:
+      - docker run --name nats-box --network host --rm -p 4222:4222 -p 8222:8222 -ti natsio/nats-box

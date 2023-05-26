@@ -4,17 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/danielmichaels/onpicket/internal/config"
-	"github.com/danielmichaels/onpicket/internal/database"
-	"github.com/danielmichaels/onpicket/internal/version"
-	"github.com/danielmichaels/onpicket/pkg/api"
-	"github.com/rs/zerolog"
 	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/danielmichaels/onpicket/internal/config"
+	"github.com/danielmichaels/onpicket/internal/database"
+	natsio "github.com/danielmichaels/onpicket/internal/nats"
+	"github.com/danielmichaels/onpicket/internal/version"
+	"github.com/danielmichaels/onpicket/pkg/api"
+	"github.com/rs/zerolog"
 )
 
 type Envelope map[string]any
@@ -30,6 +32,7 @@ type S struct {
 	Logger zerolog.Logger
 	WG     *sync.WaitGroup
 	Models *database.Queries
+	Nats   *natsio.Nats
 }
 
 func (app *Application) Serve() error {
