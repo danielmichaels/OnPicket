@@ -1,0 +1,117 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  PROJECT: "onpicket"
+  DB_NAME: "data.db"
+
+env:
+  CGO_ENABLED: 1
+dotenv:
+  - .env
+
+tasks:
+  default:
+    desc: Show all possible tasks
+    cmds:
+      - task --list-all
+    silent: true
+
+  dev:
+    desc: Run the local development server; requires cosmtrek/air
+    cmds:
+      - air
+
+  yarn:
+    desc: Install javascript dependencies
+    cmds:
+      - yarn
+
+  tailwind:
+    desc: Install tailwind dependencies
+    cmds:
+      - yarn tailwind
+
+  alpine:
+    desc: Install Alpine.js dependencies
+    cmds:
+      - yarn alpine
+
+  assets:
+    desc: Run all javascript related tasks in one go
+    cmds:
+      - task: yarn
+      - task: tailwind
+      - task: alpine
+
+  docker-build:
+    desc: Build docker locally
+    cmds:
+      - docker build . -t {{.PROJECT}}
+
+  docker-run:
+    desc: Run the locally built container
+    cmds:
+      - docker run --rm -it {{.PROJECT}}
+
+  db:migration:up:
+    desc: Run migrations (all of them)
+    cmds:
+      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} up
+
+  db:migration:down:
+    desc: Drop all migrations
+    cmds:
+      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} down
+
+  db:migration:down:to:
+    desc: Run migrations back to a specific version
+    summary: |
+      Rollback to a specific version of the local migrations. Must provide the version
+      as an argument.
+
+      Example,
+
+      task db:migration:down:to -- 0001
+    cmds:
+      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} down-to {{.CLI_ARGS}}
+  db:migration:create:
+    desc: Create a new migration. The migration name is the value after --
+    summary: |
+      Create a new migrations file using the following syntax
+
+      task db:migration:create -- my-new-migration
+    cmds:
+      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} create {{.CLI_ARGS}} sql
+      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} fix
+
+  db:migration:redo:
+    desc: Rollback the latest migration, the reapply
+    cmds:
+      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} redo
+
+  db:migration:status:
+    desc: Get the migration status of the local sqlite3 database
+    summary: |
+      Example usage
+
+      task db:migration:status
+    cmds:
+      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} status
+
+  codegen:
+    desc: Run oapi-codegen
+    cmds:
+      - oapi-codegen --config=spec/cfg.yaml spec/oapi-spec.yaml
+  nats:
+    desc: |
+      Run the local NATS box in detached mode
+    cmds:
+      - docker run --name nats --rm -d -p 4222:4222 -p 8222:8222 nats --http_port 8222
+
+  nats-box:
+    desc: |
+      Run the interactive natsio/nats-box
+    cmds:
+      - docker run --name nats-box --network host --rm -p 4222:4222 -p 8222:8222 -ti natsio/nats-box
