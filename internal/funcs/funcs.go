@@ -228,6 +228,8 @@ func toInt64(i any) (int64, error) {
 
 	return 0, fmt.Errorf("unable to convert type %T to int", i)
 }
+
+// BackgroundFunc executes a given function in a goroutine.
 func BackgroundFunc(fn func()) {
 	// Launch a background goroutine.
 	var wg sync.WaitGroup
@@ -236,7 +238,7 @@ func BackgroundFunc(fn func()) {
 		// Recover any panic.
 		defer func() {
 			if err := recover(); err != nil {
-				log.Warn().Msgf("background-task err")
+				log.Warn().Msgf("background-task err", err)
 			}
 		}()
 

@@ -115,6 +115,7 @@ components:
           enum:
             - port_scan
             - service_discovery
+            - service_discovery_default_scripts
         description:
           type: string
 

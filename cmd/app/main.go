@@ -67,9 +67,9 @@ func run() error {
 	app.Logger.Info().Msg("draining NATS")
 	err = app.Nats.Conn.Drain()
 	if err != nil {
-		app.Logger.Error().Err(err).Msg("error: failed to disconnect from database")
+		app.Logger.Error().Err(err).Msg("error: failed to drain NATS")
 		return err
 	}
-	app.Logger.Info().Msg("database connection shutdown")
+	app.Logger.Info().Msg("system shutdown")
 	return nil
 }

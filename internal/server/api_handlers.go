@@ -54,7 +54,7 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 	// 1-200
 	// 22,33,44
 	v.CheckField(validator.NotBlank(string(newScan.Type)), "type", "type must not be empty")
-	enumTypes := []api.NewScanType{api.PortScan, api.ServiceDiscovery}
+	enumTypes := []api.NewScanType{api.PortScan, api.ServiceDiscovery, api.ServiceDiscoveryDefaultScripts}
 	v.CheckField(validator.In(newScan.Type, enumTypes...), "type", "type must be a valid option")
 
 	if v.HasErrors() {

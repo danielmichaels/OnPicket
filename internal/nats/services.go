@@ -42,7 +42,27 @@ func (n *Nats) scanStartQueueGroup() error {
 			return
 		}
 		funcs.BackgroundFunc(func() {
-			n.StartScan(&scan)
+			sRes, err := services.StartScan(&scan)
+			if err != nil {
+				n.L.Error().Err(err).Msg("scan error")
+				err = n.scanError()
+				if err != nil {
+					n.L.Error().Err(err).Msg("scan publish ScanFail error")
+					return
+				}
+				return
+			}
+
+			r, err := json.Marshal(sRes)
+			if err != nil {
+				n.L.Error().Err(err).Msg("scan unmarshal error")
+				return
+			}
+			err = n.Conn.Publish(ScanCompleteSubj, r)
+			if err != nil {
+				n.L.Error().Err(err).Msg("scan publish ScanComplete error")
+				return
+			}
 		})
 	}); err != nil {
 		n.L.Error().Err(err).Msgf("err subscribing")
@@ -54,6 +74,8 @@ func (n *Nats) scanStartQueueGroup() error {
 func (n *Nats) scanCompleteQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanCompleteSubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("msg.Data received: %s", string(msg.Data))
+		// update db with scan sucess
+		// (optional) alert customer scan completed
 	}); err != nil {
 		n.L.Error().Err(err).Msgf("err subscribing")
 		return err
@@ -64,6 +86,8 @@ func (n *Nats) scanCompleteQueueGroup() error {
 func (n *Nats) scanRetryQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanRetrySubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("msg.Data received: %s", string(msg.Data))
+		// if total retries >= retry qty; send scanFail
+		// else; send to scanStart
 	}); err != nil {
 		n.L.Error().Err(err).Msgf("err subscribing")
 		return err
@@ -73,6 +97,8 @@ func (n *Nats) scanRetryQueueGroup() error {
 func (n *Nats) scanFailQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanFailSubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("msg.Data received: %s", string(msg.Data))
+		// save to database that scan failed
+		// (optional) alert customer scan failed
 	}); err != nil {
 		n.L.Error().Err(err).Msgf("err subscribing")
 		return err
@@ -80,38 +106,6 @@ func (n *Nats) scanFailQueueGroup() error {
 	return nil
 }
 
-func (n *Nats) scanError() {
-	_ = n.Conn.Publish(ScanFailSubj, []byte("scan failed"))
-}
-
-func (n *Nats) StartScan(s *api.Scan) {
-	scanner, err := services.ScannerFactory([]string{s.Host}, s.Ports)
-	if err != nil {
-		n.scanError()
-		return
-	}
-
-	result, warnings, err := scanner.Run()
-	if err != nil {
-		n.scanError()
-		return
-	}
-
-	if len(*warnings) > 0 {
-		n.L.Warn().Msgf("run finished with warnings: %s\n", *warnings)
-	}
-
-	for _, host := range result.Hosts {
-		if len(host.Ports) == 0 || len(host.Addresses) == 0 {
-			continue
-		}
-
-		n.L.Info().Msgf("Host %q:\n", host.Addresses[0])
-
-		for _, port := range host.Ports {
-			n.L.Info().Msgf("\tPort %d/%s %s %s\n", port.ID, port.Protocol, port.State, port.Service.Name)
-		}
-	}
-	r, _ := json.Marshal(result)
-	_ = n.Conn.Publish(ScanCompleteSubj, r)
+func (n *Nats) scanError() error {
+	return n.Conn.Publish(ScanFailSubj, []byte("scan failed"))
 }
