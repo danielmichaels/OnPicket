@@ -4,7 +4,6 @@ version: '3'
 
 vars:
   PROJECT: "onpicket"
-  DB_NAME: "data.db"
 
 env:
   CGO_ENABLED: 1
@@ -45,6 +44,15 @@ tasks:
       - task: tailwind
       - task: alpine
 
+  doc-up:
+    desc: Run `docker compose up`
+    summary: |
+      This is used to test all components together, not for development.
+
+      Use `task bootstrap && task dev` for local dev
+    cmds:
+      - docker compose up -d
+
   docker-build:
     desc: Build docker locally
     cmds:
@@ -55,63 +63,36 @@ tasks:
     cmds:
       - docker run --rm -it {{.PROJECT}}
 
-  db:migration:up:
-    desc: Run migrations (all of them)
-    cmds:
-      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} up
-
-  db:migration:down:
-    desc: Drop all migrations
-    cmds:
-      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} down
-
-  db:migration:down:to:
-    desc: Run migrations back to a specific version
-    summary: |
-      Rollback to a specific version of the local migrations. Must provide the version
-      as an argument.
-
-      Example,
-
-      task db:migration:down:to -- 0001
-    cmds:
-      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} down-to {{.CLI_ARGS}}
-  db:migration:create:
-    desc: Create a new migration. The migration name is the value after --
-    summary: |
-      Create a new migrations file using the following syntax
-
-      task db:migration:create -- my-new-migration
-    cmds:
-      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} create {{.CLI_ARGS}} sql
-      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} fix
-
-  db:migration:redo:
-    desc: Rollback the latest migration, the reapply
-    cmds:
-      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} redo
-
-  db:migration:status:
-    desc: Get the migration status of the local sqlite3 database
-    summary: |
-      Example usage
-
-      task db:migration:status
-    cmds:
-      - goose -dir ./assets/migrations sqlite3 ./data/{{.DB_NAME}} status
-
   codegen:
     desc: Run oapi-codegen
     cmds:
       - oapi-codegen --config=spec/cfg.yaml spec/oapi-spec.yaml
-  nats:
-    desc: |
-      Run the local NATS box in detached mode
+
+  bootstrap:
+    desc: Bootstrap the dev environment without docker-compose
     cmds:
-      - docker run --name nats --rm -d -p 4222:4222 -p 8222:8222 nats --http_port 8222
+      - task: nats
+      - task: mongo
+
+  nats:
+    desc: Run the local NATS box in detached mode
+    cmds:
+      - docker run --name {{.PROJECT}}-nats --rm -d -p 4222:4222 -p 8222:8222 nats --http_port 8222
 
   nats-box:
-    desc: |
-      Run the interactive natsio/nats-box
+    desc: Run the interactive natsio/nats-box
     cmds:
-      - docker run --name nats-box --network host --rm -p 4222:4222 -p 8222:8222 -ti natsio/nats-box
+      - docker run --name {{.PROJECT}}-nats-box --network host --rm -p 4222:4222 -p 8222:8222 -ti natsio/nats-box
+
+  mongo:
+    desc: Run a MongoDB instance locally
+    cmds:
+      - |
+        docker run --rm -d \
+        -e MONGO_INITDB_ROOT_USERNAME=root \
+        -e MONGO_INITDB_ROOT_PASSWORD=root \
+        -e MONGO_INITDB_DATABASE=admin \
+        -p 27016:27017 \
+        --name {{.PROJECT}}-mongo \
+        -v onpicket_mongo:/data/db \
+        mongo:latest

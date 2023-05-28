@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"go.mongodb.org/mongo-driver/mongo"
 	"net/http"
 	"os"
 	"os/signal"
@@ -12,7 +13,6 @@ import (
 	"time"
 
 	"github.com/danielmichaels/onpicket/internal/config"
-	"github.com/danielmichaels/onpicket/internal/database"
 	natsio "github.com/danielmichaels/onpicket/internal/nats"
 	"github.com/danielmichaels/onpicket/internal/version"
 	"github.com/danielmichaels/onpicket/pkg/api"
@@ -31,7 +31,7 @@ type S struct {
 	Config *config.Conf
 	Logger zerolog.Logger
 	WG     *sync.WaitGroup
-	Models *database.Queries
+	DB     *mongo.Database
 	Nats   *natsio.Nats
 }
 

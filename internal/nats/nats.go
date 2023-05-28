@@ -1,6 +1,7 @@
 package natsio
 
 import (
+	"go.mongodb.org/mongo-driver/mongo"
 	"os"
 	"time"
 
@@ -13,15 +14,17 @@ import (
 type Nats struct {
 	Conn *nats.Conn
 
-	L zerolog.Logger
-	C *config.Conf
+	L  zerolog.Logger
+	C  *config.Conf
+	DB *mongo.Database
 }
 
-func New(conn *nats.Conn, l zerolog.Logger, cfg *config.Conf) *Nats {
+func New(conn *nats.Conn, l zerolog.Logger, cfg *config.Conf, db *mongo.Database) *Nats {
 	return &Nats{
 		Conn: conn,
 		L:    l,
 		C:    cfg,
+		DB:   db,
 	}
 }
 

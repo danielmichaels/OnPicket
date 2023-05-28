@@ -31,21 +31,22 @@ func run() error {
 	if cfg.AppConf.LogCaller {
 		logger = logger.With().Caller().Logger()
 	}
-	db, err := database.OpenDB(cfg)
+	dbConn, err := database.InitDatabase(cfg.Db.DbName)
 	if err != nil {
-		logger.Fatal().Err(err).Msg("failed to open database. exiting")
+		return err
 	}
+
 	natsConn, err := natsio.Connect(cfg.Nats.URI)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to connect to NATS. exiting")
 	}
 	n := natsio.New(
-		natsConn, logger, cfg,
+		natsConn, logger, cfg, dbConn,
 	)
 	s := server.S{
 		Config: cfg,
 		Logger: logger,
-		Models: database.New(db),
+		DB:     dbConn,
 		WG:     &sync.WaitGroup{},
 		Nats:   n,
 	}
