@@ -23,7 +23,7 @@ type limiter struct {
 type dbConf struct {
 	DbURI              string `env:"DATABASE_URI,default=localhost:27017"`
 	DbName             string `env:"DATABASE_NAME,default=onpicket"`
-	DbNameAuth         string `env:"DATABASE_NAME,default=admin"`
+	DbNameAuth         string `env:"DATABASE_AUTH_NAME,default=admin"`
 	DbUsername         string `env:"DATABASE_USERNAME,default=root"`
 	DbPassword         string `env:"DATABASE_PASSWORD,default=root"`
 	DbConnectionString string `env:"DATABASE_CONNECTION_STRING,default=localhost"`
