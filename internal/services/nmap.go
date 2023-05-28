@@ -5,7 +5,29 @@ import (
 	"github.com/Ullaakut/nmap/v3"
 	"github.com/danielmichaels/onpicket/pkg/api"
 	"github.com/rs/zerolog/log"
+	"math"
 )
+
+type NmapMetadata struct {
+	CurrentPage  int64 `json:"current_page,omitempty"`
+	PageSize     int64 `json:"page_size,omitempty"`
+	FirstPage    int64 `json:"first_page,omitempty"`
+	LastPage     int64 `json:"last_page,omitempty"`
+	TotalRecords int64 `json:"total_records,omitempty"`
+}
+
+func CalculateMetadata(totalRecords int64, page, pageSize int64) NmapMetadata {
+	if totalRecords == 0 {
+		return NmapMetadata{}
+	}
+	return NmapMetadata{
+		CurrentPage:  page,
+		PageSize:     pageSize,
+		FirstPage:    1,
+		LastPage:     int64(math.Ceil(float64(totalRecords) / float64(pageSize))),
+		TotalRecords: totalRecords,
+	}
+}
 
 // NmapScanOut overrides nmap.Run and returns only the important information to the user.
 type NmapScanOut struct {

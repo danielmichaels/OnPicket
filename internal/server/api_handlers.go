@@ -15,6 +15,7 @@ import (
 	"github.com/danielmichaels/onpicket/internal/version"
 	"github.com/danielmichaels/onpicket/pkg/api"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"net/http"
 )
 
@@ -34,18 +35,37 @@ func (app *Application) Healthz(w http.ResponseWriter, r *http.Request) {
 }
 
 func (app *Application) ListScans(w http.ResponseWriter, r *http.Request) {
+	qs := r.URL.Query()
+	v := validator.Validator{}
+	pageNo := request.ReadInt(qs, "page", 1, &v)
+	pageSize := request.ReadInt(qs, "page_size", 2, &v)
+	if v.HasErrors() {
+		app.apiValidationError(w, "validation failed", v.FieldErrors)
+		return
+	}
+
+	opts := options.Find().SetLimit(pageSize).SetSkip((pageNo - 1) * pageSize)
 	filter := bson.D{}
-	cursor, err := app.DB.Collection(database.ScanCollection).Find(context.TODO(), filter)
+	cursor, err := app.DB.Collection(database.ScanCollection).Find(context.TODO(), filter, opts)
 	if err != nil {
 		app.notFound(w, r)
 		return
 	}
+
+	total, err := app.DB.Collection(database.ScanCollection).CountDocuments(context.TODO(), bson.D{}, options.Count().SetHint("_id_"))
+	if err != nil {
+		app.notFound(w, r)
+		return
+	}
+
 	var data []services.NmapScanOut
 	if err = cursor.All(context.TODO(), &data); err != nil {
 		app.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
-	_ = response.JSON(w, http.StatusOK, data)
+	_ = response.JSON(w, http.StatusOK, Envelope{
+		"data":     data,
+		"metadata": services.CalculateMetadata(total, pageNo, pageSize)})
 }
 func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 	var ns api.ScanBody
