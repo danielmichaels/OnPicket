@@ -5,7 +5,6 @@ import (
 	"github.com/danielmichaels/onpicket/internal/validator"
 	"github.com/go-playground/form/v4"
 	"net/http"
-	"net/url"
 	"strconv"
 )
 
@@ -46,18 +45,17 @@ func DecodeQueryString(r *http.Request, dst any) error {
 // before returning. If no matching key is found it returns the provided default
 // value. If the value couldn't be converted to an int, then we record an error
 // message in the provided Validator instance.
-func ReadInt(qs url.Values, key string, defaultValue int64, v *validator.Validator) int64 {
-	s := qs.Get(key)
+func ReadInt(qs *string, key string, defaultValue int64, v *validator.Validator) int64 {
 
-	if s == "" {
+	if qs == nil {
 		return defaultValue
 	}
 
 	// Try to convert the value to an int. If this fails, add an error message to
 	// the validator instance and return the default value.
-	i, err := strconv.Atoi(s)
+	i, err := strconv.Atoi(*qs)
 	if err != nil {
-		v.AddError("must be an integer value")
+		v.AddFieldError(key, "must be an integer value")
 		return defaultValue
 	}
 	return int64(i)

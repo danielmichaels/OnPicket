@@ -16,6 +16,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/go-chi/chi/v5"
 )
@@ -76,8 +77,23 @@ type Scan struct {
 // ScanStatus defines model for Scan.Status.
 type ScanStatus string
 
+// PageParam defines model for PageParam.
+type PageParam = string
+
+// PageSizeParam defines model for PageSizeParam.
+type PageSizeParam = string
+
 // ScanBody defines model for ScanBody.
 type ScanBody = NewScan
+
+// ListScansParams defines parameters for ListScans.
+type ListScansParams struct {
+	// Page page number for pagination
+	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
+
+	// PageSize page size for pagination
+	PageSize *PageSizeParam `form:"page_size,omitempty" json:"page_size,omitempty"`
+}
 
 // CreateScanJSONRequestBody defines body for CreateScan for application/json ContentType.
 type CreateScanJSONRequestBody = NewScan
@@ -159,7 +175,7 @@ type ClientInterface interface {
 	Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListScans request
-	ListScans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	ListScans(ctx context.Context, params *ListScansParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateScan request with any body
 	CreateScanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -179,8 +195,8 @@ func (c *Client) Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*h
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListScans(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListScansRequest(c.Server)
+func (c *Client) ListScans(ctx context.Context, params *ListScansParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListScansRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -243,7 +259,7 @@ func NewHealthzRequest(server string) (*http.Request, error) {
 }
 
 // NewListScansRequest generates requests for ListScans
-func NewListScansRequest(server string) (*http.Request, error) {
+func NewListScansRequest(server string, params *ListScansParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -260,6 +276,42 @@ func NewListScansRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	queryValues := queryURL.Query()
+
+	if params.Page != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page", runtime.ParamLocationQuery, *params.Page); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.PageSize != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "page_size", runtime.ParamLocationQuery, *params.PageSize); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
@@ -356,7 +408,7 @@ type ClientWithResponsesInterface interface {
 	HealthzWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthzResponse, error)
 
 	// ListScans request
-	ListScansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListScansResponse, error)
+	ListScansWithResponse(ctx context.Context, params *ListScansParams, reqEditors ...RequestEditorFn) (*ListScansResponse, error)
 
 	// CreateScan request with any body
 	CreateScanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScanResponse, error)
@@ -442,8 +494,8 @@ func (c *ClientWithResponses) HealthzWithResponse(ctx context.Context, reqEditor
 }
 
 // ListScansWithResponse request returning *ListScansResponse
-func (c *ClientWithResponses) ListScansWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListScansResponse, error) {
-	rsp, err := c.ListScans(ctx, reqEditors...)
+func (c *ClientWithResponses) ListScansWithResponse(ctx context.Context, params *ListScansParams, reqEditors ...RequestEditorFn) (*ListScansResponse, error) {
+	rsp, err := c.ListScans(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -566,7 +618,7 @@ type ServerInterface interface {
 	Healthz(w http.ResponseWriter, r *http.Request)
 	// Return all scans
 	// (GET /scans)
-	ListScans(w http.ResponseWriter, r *http.Request)
+	ListScans(w http.ResponseWriter, r *http.Request, params ListScansParams)
 	// Create a new Scan
 	// (POST /scans)
 	CreateScan(w http.ResponseWriter, r *http.Request)
@@ -600,8 +652,29 @@ func (siw *ServerInterfaceWrapper) Healthz(w http.ResponseWriter, r *http.Reques
 func (siw *ServerInterfaceWrapper) ListScans(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListScansParams
+
+	// ------------- Optional query parameter "page" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page", r.URL.Query(), &params.Page)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page", Err: err})
+		return
+	}
+
+	// ------------- Optional query parameter "page_size" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "page_size", r.URL.Query(), &params.PageSize)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "page_size", Err: err})
+		return
+	}
+
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.ListScans(w, r)
+		siw.Handler.ListScans(w, r, params)
 	})
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -755,19 +828,20 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

@@ -34,11 +34,11 @@ func (app *Application) Healthz(w http.ResponseWriter, r *http.Request) {
 	_ = response.JSON(w, http.StatusOK, health)
 }
 
-func (app *Application) ListScans(w http.ResponseWriter, r *http.Request) {
-	qs := r.URL.Query()
+func (app *Application) ListScans(w http.ResponseWriter, r *http.Request, params api.ListScansParams) {
 	v := validator.Validator{}
-	pageNo := request.ReadInt(qs, "page", 1, &v)
-	pageSize := request.ReadInt(qs, "page_size", 2, &v)
+
+	pageNo := request.ReadInt(params.Page, "page", 1, &v)
+	pageSize := request.ReadInt(params.PageSize, "page_size", 20, &v)
 	if v.HasErrors() {
 		app.apiValidationError(w, "validation failed", v.FieldErrors)
 		return
@@ -67,6 +67,7 @@ func (app *Application) ListScans(w http.ResponseWriter, r *http.Request) {
 		"data":     data,
 		"metadata": services.CalculateMetadata(total, pageNo, pageSize)})
 }
+
 func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 	var ns api.ScanBody
 	err := request.DecodeJSON(w, r, &ns)
@@ -92,11 +93,12 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	scan := api.Scan{
-		Id:     generateName(string(ns.Type)),
-		Ports:  ns.Ports,
-		Host:   ns.Host,
-		Type:   string(ns.Type),
-		Status: api.Scheduled,
+		Id:          generateName(string(ns.Type)),
+		Ports:       ns.Ports,
+		Host:        ns.Host,
+		Type:        string(ns.Type),
+		Status:      api.Scheduled,
+		Description: ns.Description,
 	}
 
 	// poc
@@ -112,5 +114,10 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_ = response.JSON(w, http.StatusCreated, Envelope{"scan": scan.Id})
+	//app.DB.Collection(database.ScanCollection).InsertOne(
+	//	context.TODO(),
+	//	bson.M{"id": scan.Id, "status": scan.Status},
+	//)
+
+	_ = response.JSON(w, http.StatusCreated, scan)
 }

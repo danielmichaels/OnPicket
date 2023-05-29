@@ -8,6 +8,8 @@ import (
 	"github.com/danielmichaels/onpicket/internal/services"
 	"github.com/danielmichaels/onpicket/pkg/api"
 	"github.com/nats-io/nats.go"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 const (
@@ -19,22 +21,22 @@ const (
 )
 
 func (n *Nats) InitSubscribers() error {
-	if err := n.scanStartQueueGroup(); err != nil {
+	if err := n.startScanQueueGroup(); err != nil {
 		return err
 	}
-	if err := n.scanRetryQueueGroup(); err != nil {
+	if err := n.retryScanQueueGroup(); err != nil {
 		return err
 	}
-	if err := n.scanCompleteQueueGroup(); err != nil {
+	if err := n.completeScanQueueGroup(); err != nil {
 		return err
 	}
-	if err := n.scanFailQueueGroup(); err != nil {
+	if err := n.failScanQueueGroup(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (n *Nats) scanStartQueueGroup() error {
+func (n *Nats) startScanQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanStartSubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("%q received: %s", ScanStartSubj, string(msg.Data))
 		var scan api.Scan
@@ -44,6 +46,26 @@ func (n *Nats) scanStartQueueGroup() error {
 			return
 		}
 		funcs.BackgroundFunc(func() {
+			filter := bson.D{{Key: "id", Value: scan.Id}}
+			opts := options.Update().SetUpsert(true)
+			fields := bson.D{
+				{Key: "$set", Value: bson.D{
+					{Key: "status", Value: string(api.InProgress)},
+					{Key: "id", Value: scan.Id},
+					{Key: "scan_type", Value: scan.Type},
+					{Key: "description", Value: scan.Description},
+				}},
+			}
+			_, err = n.DB.Collection(database.ScanCollection).UpdateOne(
+				context.TODO(),
+				filter,
+				fields,
+				opts,
+			)
+			if err != nil {
+				n.L.Error().Err(err).Msg("scan status update error")
+				return
+			}
 			sRes, err := services.StartScan(&scan)
 			if err != nil {
 				n.L.Error().Err(err).Msg("scan error")
@@ -57,6 +79,9 @@ func (n *Nats) scanStartQueueGroup() error {
 
 			nmapResult := services.NmapScanIn{
 				ID:               scan.Id,
+				Status:           string(api.Complete),
+				ScanType:         scan.Type,
+				Description:      scan.Description,
 				Args:             sRes.Args,
 				ProfileName:      sRes.ProfileName,
 				Scanner:          sRes.Scanner,
@@ -95,7 +120,7 @@ func (n *Nats) scanStartQueueGroup() error {
 	return nil
 }
 
-func (n *Nats) scanCompleteQueueGroup() error {
+func (n *Nats) completeScanQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanCompleteSubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("%q received: %s", ScanCompleteSubj, string(msg.Data))
 
@@ -105,7 +130,17 @@ func (n *Nats) scanCompleteQueueGroup() error {
 			n.L.Error().Err(err).Msgf("err: unmarshalling NATS message")
 			return
 		}
-		_, err = n.DB.Collection(database.ScanCollection).InsertOne(context.TODO(), s)
+		filter := bson.D{{Key: "id", Value: s.ID}}
+		opts := options.Update().SetUpsert(true)
+		fields := bson.D{
+			{Key: "$set", Value: s},
+		}
+		_, err = n.DB.Collection(database.ScanCollection).UpdateOne(
+			context.TODO(),
+			filter,
+			fields,
+			opts,
+		)
 		if err != nil {
 			n.L.Error().Err(err).Msgf("err: inserting document")
 			return
@@ -119,7 +154,7 @@ func (n *Nats) scanCompleteQueueGroup() error {
 	return nil
 }
 
-func (n *Nats) scanRetryQueueGroup() error {
+func (n *Nats) retryScanQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanRetrySubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("%q received: %s", ScanRetrySubj, string(msg.Data))
 		// if total retries >= retry qty; send scanFail
@@ -130,7 +165,7 @@ func (n *Nats) scanRetryQueueGroup() error {
 	}
 	return nil
 }
-func (n *Nats) scanFailQueueGroup() error {
+func (n *Nats) failScanQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanFailSubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("%q received: %s", ScanFailSubj, string(msg.Data))
 		// save to database that scan failed
