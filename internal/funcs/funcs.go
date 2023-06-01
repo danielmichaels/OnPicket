@@ -238,7 +238,7 @@ func BackgroundFunc(fn func()) {
 		// Recover any panic.
 		defer func() {
 			if err := recover(); err != nil {
-				log.Warn().Msgf("background-task err", err)
+				log.Warn().Msgf("background-task err: %v", err)
 			}
 		}()
 
