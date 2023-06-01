@@ -26,7 +26,7 @@ func generateName(s string) string {
 	return fmt.Sprintf("%s-%s", s, hex.EncodeToString(b))
 }
 
-func (app *Application) Healthz(w http.ResponseWriter, r *http.Request) {
+func (app *Application) Healthz(w http.ResponseWriter, _ *http.Request) {
 	health := api.Healthz{
 		Status:  "OK",
 		Version: version.Get(),

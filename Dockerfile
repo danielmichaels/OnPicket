@@ -1,4 +1,4 @@
-FROM golang:1.20-bullseye AS builder
+FROM golang:1.20-alpine AS builder
 
 # Move to working directory (/build).
 WORKDIR /build
@@ -14,7 +14,7 @@ RUN go build  \
     -ldflags="-s -w" \
     -o app github.com/danielmichaels/onpicket/cmd/app
 
-FROM gcr.io/distroless/base-debian11:debug
+FROM instrumentisto/nmap
 
 COPY --from=builder ["/build/app", "/usr/bin/app"]
 
