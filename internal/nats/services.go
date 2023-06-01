@@ -54,6 +54,7 @@ func (n *Nats) startScanQueueGroup() error {
 					{Key: "id", Value: scan.Id},
 					{Key: "scan_type", Value: scan.Type},
 					{Key: "description", Value: scan.Description},
+					{Key: "scan_hosts", Value: scan.Hosts},
 				}},
 			}
 			_, err = n.DB.Collection(database.ScanCollection).UpdateOne(
@@ -82,6 +83,7 @@ func (n *Nats) startScanQueueGroup() error {
 				Status:           string(api.Complete),
 				ScanType:         scan.Type,
 				Description:      scan.Description,
+				ScanHosts:        scan.Hosts,
 				Args:             sRes.Args,
 				ProfileName:      sRes.ProfileName,
 				Scanner:          sRes.Scanner,

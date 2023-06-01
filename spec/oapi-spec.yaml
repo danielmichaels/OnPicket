@@ -74,7 +74,7 @@ components:
     Scan:
       required:
         - id
-        - host
+        - hosts
         - ports
         - description
         - type
@@ -82,8 +82,10 @@ components:
       properties:
         id:
           type: string
-        host:
-          type: string
+        hosts:
+          type: array
+          items:
+            type: string
         ports:
           type: array
           items:
@@ -102,14 +104,16 @@ components:
 
     NewScan:
       required:
-        - host
+        - hosts
         - ports
         - description
         - type
         - status
       properties:
-        host:
-          type: string
+        hosts:
+          type: array
+          items:
+            type: string
         ports:
           type: array
           items:

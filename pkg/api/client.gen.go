@@ -56,7 +56,7 @@ type Healthz struct {
 // NewScan defines model for NewScan.
 type NewScan struct {
 	Description string      `json:"description"`
-	Host        string      `json:"host"`
+	Hosts       []string    `json:"hosts"`
 	Ports       []string    `json:"ports"`
 	Type        NewScanType `json:"type"`
 }
@@ -67,7 +67,7 @@ type NewScanType string
 // Scan defines model for Scan.
 type Scan struct {
 	Description string     `json:"description"`
-	Host        string     `json:"host"`
+	Hosts       []string   `json:"hosts"`
 	Id          string     `json:"id"`
 	Ports       []string   `json:"ports"`
 	Status      ScanStatus `json:"status"`
@@ -828,20 +828,21 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
+	"CwAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

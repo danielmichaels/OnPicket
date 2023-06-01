@@ -35,6 +35,7 @@ type NmapScanOut struct {
 	Status      string          `json:"status,omitempty"`
 	ScanType    api.NewScanType `json:"scan_type,omitempty"`
 	Description string          `json:"description,omitempty"`
+	HostArray   []string        `json:"hosts_array"`
 	Args        string          `xml:"args,attr" json:"args"`
 	Scanner     string          `xml:"scanner,attr" json:"scanner"`
 	StartStr    string          `xml:"startstr,attr" json:"start_str"`
@@ -59,6 +60,7 @@ type NmapScanIn struct {
 	Status           string              `json:"status,omitempty"`
 	ScanType         string              `json:"scan_type,omitempty"`
 	Description      string              `json:"description,omitempty"`
+	ScanHosts        []string            `json:"scan_hosts"`
 	Args             string              `xml:"args,attr" json:"args"`
 	ProfileName      string              `xml:"profile_name,attr" json:"profile_name"`
 	Scanner          string              `xml:"scanner,attr" json:"scanner"`
@@ -114,7 +116,7 @@ func ScannerFactory(targets, ports []string, scanType string) (*nmap.Scanner, er
 }
 
 func StartScan(s *api.Scan) (*nmap.Run, error) {
-	scanner, err := ScannerFactory([]string{s.Host}, s.Ports, s.Type)
+	scanner, err := ScannerFactory(s.Hosts, s.Ports, s.Type)
 	if err != nil {
 		return nil, err
 	}
