@@ -1,0 +1,79 @@
+version: "3.7"
+
+services:
+  server:
+    container_name: server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - ".env"
+    environment:
+      DATABASE_USERNAME: root
+      DATABASE_PASSWORD: root
+      DATABASE_AUTH_NAME: admin
+      DATABASE_NAME: onpicket
+      DATABASE_PORT: 27016
+      DATABASE_CONNECTION_STRING: mongo
+      NATS_URI: nats://nats:4222
+    volumes:
+      - ./:/build
+    depends_on:
+      mongo:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    links:
+      - mongo
+      - nats
+    networks:
+      - svc
+  mongo:
+    networks:
+      - svc
+    image: mongo
+    container_name: mongo
+    command: mongod --auth
+    volumes:
+      - mongo_volume:/data/db
+    ports:
+      - "27016:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+      MONGO_INITDB_DATABASE: admin
+    deploy:
+      restart_policy:
+        condition: on-failure
+        max_attempts: 3
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongo:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+  nats:
+    image: nats:alpine
+    container_name: nats
+    ports:
+      - "8222:8222"
+      - "6222:6222"
+      - "4222:4222"
+    expose:
+      - "4222"
+    command: "--cluster_name NATS --cluster nats://nats:6222 --http_port 8222 --port 4222"
+    networks:
+      - svc
+    healthcheck:
+      test: [ "CMD-SHELL", "echo $$(wget --server-response http://localhost:8222/varz 2>&1 | grep  '200 OK') | grep '200'  || exit 1" ]
+      interval: 3s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+networks:
+  svc: { }
+
+volumes:
+  mongo_volume: { }
