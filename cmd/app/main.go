@@ -35,11 +35,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-
 	natsConn, err := natsio.Connect(cfg.Nats.URI)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("failed to connect to NATS. exiting")
 	}
+	logger.Info().Strs("servers", natsConn.Servers()).Msg("connected to NATS")
 	n := natsio.New(
 		natsConn, logger, cfg, dbConn,
 	)

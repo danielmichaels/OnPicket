@@ -60,3 +60,10 @@ func ReadInt(qs *string, key string, defaultValue int64, v *validator.Validator)
 	}
 	return int64(i)
 }
+
+func ReadString(qs *string, defaultValue string) string {
+	if qs == nil {
+		return defaultValue
+	}
+	return *qs
+}

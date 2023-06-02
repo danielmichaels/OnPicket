@@ -85,6 +85,9 @@ type PageParam = string
 // PageSizeParam defines model for PageSizeParam.
 type PageSizeParam = string
 
+// PageSortParam defines model for PageSortParam.
+type PageSortParam = string
+
 // ScanBody defines model for ScanBody.
 type ScanBody = NewScan
 
@@ -95,6 +98,9 @@ type ListScansParams struct {
 
 	// PageSize page size for pagination
 	PageSize *PageSizeParam `form:"page_size,omitempty" json:"page_size,omitempty"`
+
+	// Sort sort results
+	Sort *PageSortParam `form:"sort,omitempty" json:"sort,omitempty"`
 }
 
 // CreateScanJSONRequestBody defines body for CreateScan for application/json ContentType.
@@ -183,6 +189,9 @@ type ClientInterface interface {
 	CreateScanWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateScan(ctx context.Context, body CreateScanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RetrieveScan request
+	RetrieveScan(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) Healthz(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -223,6 +232,18 @@ func (c *Client) CreateScanWithBody(ctx context.Context, contentType string, bod
 
 func (c *Client) CreateScan(ctx context.Context, body CreateScanJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateScanRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RetrieveScan(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRetrieveScanRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -313,6 +334,22 @@ func NewListScansRequest(server string, params *ListScansParams) (*http.Request,
 
 	}
 
+	if params.Sort != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "sort", runtime.ParamLocationQuery, *params.Sort); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
 	queryURL.RawQuery = queryValues.Encode()
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -359,6 +396,40 @@ func NewCreateScanRequestWithBody(server string, contentType string, body io.Rea
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewRetrieveScanRequest generates requests for RetrieveScan
+func NewRetrieveScanRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/scans/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -416,6 +487,9 @@ type ClientWithResponsesInterface interface {
 	CreateScanWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateScanResponse, error)
 
 	CreateScanWithResponse(ctx context.Context, body CreateScanJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateScanResponse, error)
+
+	// RetrieveScan request
+	RetrieveScanWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*RetrieveScanResponse, error)
 }
 
 type HealthzResponse struct {
@@ -486,6 +560,29 @@ func (r CreateScanResponse) StatusCode() int {
 	return 0
 }
 
+type RetrieveScanResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Scan
+	JSONDefault  *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r RetrieveScanResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RetrieveScanResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // HealthzWithResponse request returning *HealthzResponse
 func (c *ClientWithResponses) HealthzWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*HealthzResponse, error) {
 	rsp, err := c.Healthz(ctx, reqEditors...)
@@ -519,6 +616,15 @@ func (c *ClientWithResponses) CreateScanWithResponse(ctx context.Context, body C
 		return nil, err
 	}
 	return ParseCreateScanResponse(rsp)
+}
+
+// RetrieveScanWithResponse request returning *RetrieveScanResponse
+func (c *ClientWithResponses) RetrieveScanWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*RetrieveScanResponse, error) {
+	rsp, err := c.RetrieveScan(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRetrieveScanResponse(rsp)
 }
 
 // ParseHealthzResponse parses an HTTP response from a HealthzWithResponse call
@@ -613,6 +719,39 @@ func ParseCreateScanResponse(rsp *http.Response) (*CreateScanResponse, error) {
 	return response, nil
 }
 
+// ParseRetrieveScanResponse parses an HTTP response from a RetrieveScanWithResponse call
+func ParseRetrieveScanResponse(rsp *http.Response) (*RetrieveScanResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RetrieveScanResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Scan
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && true:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSONDefault = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Healthcheck endpoint for the API
@@ -624,6 +763,9 @@ type ServerInterface interface {
 	// Create a new Scan
 	// (POST /scans)
 	CreateScan(w http.ResponseWriter, r *http.Request)
+	// Retrieve a single scan entry
+	// (GET /scans/{id})
+	RetrieveScan(w http.ResponseWriter, r *http.Request, id string)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -675,6 +817,14 @@ func (siw *ServerInterfaceWrapper) ListScans(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	// ------------- Optional query parameter "sort" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "sort", r.URL.Query(), &params.Sort)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "sort", Err: err})
+		return
+	}
+
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.ListScans(w, r, params)
 	})
@@ -692,6 +842,32 @@ func (siw *ServerInterfaceWrapper) CreateScan(w http.ResponseWriter, r *http.Req
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateScan(w, r)
+	})
+
+	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
+		handler = siw.HandlerMiddlewares[i](handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// RetrieveScan operation middleware
+func (siw *ServerInterfaceWrapper) RetrieveScan(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, chi.URLParam(r, "id"), &id)
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RetrieveScan(w, r, id)
 	})
 
 	for i := len(siw.HandlerMiddlewares) - 1; i >= 0; i-- {
@@ -823,6 +999,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/scans", wrapper.CreateScan)
 	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/scans/{id}", wrapper.RetrieveScan)
+	})
 
 	return r
 }
@@ -830,21 +1009,22 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/8xW32/bNhD+V4jbHjXLTTeg1VtTBFiGLg1m7KkIDIY6W2wlkiVP8ZxA//twpGzZlWwk",
-	"Q1HsTSI/3o/v493xCZRtnDVoKEDxBE562SChj3+3co23vMI/JQbltSNtDRTg5BqFaZt79GJlvXByrY2M",
-	"mxloRnxt0W8hAyMb7A9ABkFV2Ei2R1vH64G8Nmvouiy6W+jHsy6DfsTnO1wy/KzXLgOPX1sMdGlLjTHt",
-	"hZLm0pZb/lbWEBriT+lcrVV0mX8OHNLTgeGfPa6ggJ/ygdA87Yb8BjdsM7k7TuqPxccbYVfC4EZETIpH",
-	"eyyhIN8iH+ntsJsr762PSnnr0FMf8n0fbp+evf+MiqDLQNkSx1RGKyLuZbCyvpEEBWhDry8g2xnRhnCN",
-	"nq0EktSGU3YaDCGpO9Z0SOYT9P56Y3fZONrfUdZUPY7zGwL4xkUGD+iDTmqcd9/bGE5MRbCTahTBUeIT",
-	"YVQ2pBLShM10pP2C9F5u+d9Z/9IjpBu0LR1gD1RKK0+Apm04Yba/DOlSBfQPWuGy1EHZh1Qoo7VliSvZ",
-	"1nyIUz3U6ASnKetdKseXuz87CN5l8MO41eUk7D9QPly9Ha9c4TXSrrGUbY1lbEJL5+3aY2AmVlLz8pjB",
-	"Z4p4nnfNDl9GPpvQZmXZeK0VmhD99N3ynZOqQnExm0MGra+hgIrIhSLPN5vNTMbtmfXrvD8b8g/X769u",
-	"Fle/XMzms4qaOqVGNZv7aG61+oIk3t1eH1RcAfPZfPaKkdahkU5DAa9n8+jVSaoiz3k1tIE1Rp74tsTO",
-	"e11CsW8TzElwlqNh0MV8/qKWvb8D53r3zlc30bzTnkBTOqsNRZVC2zTSb/e7qkL1ZQ+Jo4sqjLwwPOf6",
-	"DCcz/aADLSIiO5rNn6aDHiD5MLu77FngYfJ2dz+C2DQRv623McmME7UOJHYxQcTETvXdRnSaqxPu/zb4",
-	"j0NFWArsMYci/4XUeiNkXYukZGwyYULK9x4l4cGMT2+O7anIjp4l+f5N0o20efXdSDj1SIkSHLL/a7oQ",
-	"x6hLWYo+6IT5bYz5E6mypTCWK6E15f9JyiSQkMNbLNrgKbmruaExFnleWyVr7sHF2zdv3+TczLq77t8A",
-	"AAD//zlewltSCwAA",
+	"H4sIAAAAAAAC/8xW3W7bNhR+FYLbpWa56Qa0umu7AMvQpUGNXRWBwVDHEluJZMkje46hdx8OKVl2JBvO",
+	"UHS9k8iP5+87fzsuTW2NBo2eZztuhRM1ILjwdycKuKMT+snBS6csKqN5xq0ogOmmfgDHVsYxKwqlRbhM",
+	"uCLE1wbclidcixq6BzzhXpZQC5KHW0vnHp3SBW/bJKhbqMezKr16hMsVLgl+iVbj8IRWbxwyB76p0J/Q",
+	"RJCzStqEO/jagMe3JlcQYruQQr81+Za+pdEIGulTWFspGfxKP3uyYHcg+GcHK57xn9KBtTTe+vQWNiQz",
+	"qjv24c/Fh1tmVkzDhgVMtEc5yHmGrgF60skhNdfOGRfSwRkLDjuTHzpzO/fMw2eQyNuES5PDOHJBCgt3",
+	"CV8ZVwvkGVcaX17xpBeiNEIBjqR4FNj4U3Jq8D6m0JjCwZlPvNPXCbtPxtb+AaLC8nHs32DAExUJX4Pz",
+	"KrJxXn0nY3gxZUFP1ciCI8cnzCiNj3WqEOppS7sD4ZzY0r817rlPUNVgGjzAHrAUT3YcdFOTwyR/6WNS",
+	"eXBrJWGZKy/NOtbI6GyZw0o0FT0iVw85OhHT6HXvynFyd28HwtuEf7fYqnwS9h9CPqReH1eq8Aqw7155",
+	"U0Ee+s/SOlM48BSJlVB0PI7ghSSej7sihc8LPolQemVIeKUkaB/0dI3yjRWyBHY1m/OEN67iGS8Rrc/S",
+	"dLPZzES4nhlXpN1bn76/eXd9u7j+5Wo2n5VYV9E1rEjcB32n5BdA9ubu5qDiMj6fzWcvCGksaGEVz/jL",
+	"2TxotQLLEOe0HNpAASFOlC2h897kPNu3CYqJt4asIdDVfP6slr3PgXO9u9fVTjTveMdA59YojYEl39S1",
+	"cNv9rSxBftlDwnzEEkJcCJ5SffqTnr5XHhcBkRwtAJ+mjR4g6bAgtMlF4GG8X/pgP5nb++/BRByhTwt0",
+	"zArhWKV82A2CTTxgQmv7ZjM9DuIJ9X9r+MeCRMgZdJjDrPgI2DjNRFWxSH3oSn6C+3cOBMLBUhCXlO0p",
+	"y472mHS/xLQjbl58syCc2moCBYfR/zUmxDHqrchZZ3TE/DbG/AVYmpxpQ6XT6PxHojISxMSwvA0Vne5U",
+	"3p4s64+ATsG6J/dJZU/E8ub3fsGlLjnst2EOHC+M57bd/7lOh9AtGinB+1VT/ahFGvhhgnmliwpCrTLQ",
+	"6HpXwK17voZxmaVpZaSoaDJnr1+9fpXSiGvv238DAAD//+oB4CPNDQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

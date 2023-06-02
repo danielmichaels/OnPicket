@@ -6,6 +6,9 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
+
 	"github.com/danielmichaels/onpicket/internal/database"
 	natsio "github.com/danielmichaels/onpicket/internal/nats"
 	"github.com/danielmichaels/onpicket/internal/request"
@@ -14,9 +17,9 @@ import (
 	"github.com/danielmichaels/onpicket/internal/validator"
 	"github.com/danielmichaels/onpicket/internal/version"
 	"github.com/danielmichaels/onpicket/pkg/api"
+	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"net/http"
 )
 
 // generateName creates a random name for use in identifiers
@@ -33,18 +36,28 @@ func (app *Application) Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	_ = response.JSON(w, http.StatusOK, health)
 }
-
+func sortDirection(s string) bson.D {
+	switch strings.ToLower(s) {
+	case "asc":
+		return bson.D{{Key: "_id", Value: -1}}
+	case "desc":
+		return bson.D{{Key: "_id", Value: 1}}
+	default:
+		return bson.D{{Key: "_id", Value: -1}}
+	}
+}
 func (app *Application) ListScans(w http.ResponseWriter, r *http.Request, params api.ListScansParams) {
 	var v validator.Validator
 
 	pageNo := request.ReadInt(params.Page, "page", 1, &v)
 	pageSize := request.ReadInt(params.PageSize, "page_size", 20, &v)
+	sort := request.ReadString(params.Sort, "asc")
 	if v.HasErrors() {
 		app.apiValidationError(w, v.FieldErrors)
 		return
 	}
 
-	opts := options.Find().SetLimit(pageSize).SetSkip((pageNo - 1) * pageSize)
+	opts := options.Find().SetLimit(pageSize).SetSkip((pageNo - 1) * pageSize).SetSort(sortDirection(sort))
 	filter := bson.D{}
 	cursor, err := app.DB.Collection(database.ScanCollection).Find(context.TODO(), filter, opts)
 	if err != nil {
@@ -66,6 +79,34 @@ func (app *Application) ListScans(w http.ResponseWriter, r *http.Request, params
 	_ = response.JSON(w, http.StatusOK, Envelope{
 		"data":     data,
 		"metadata": services.CalculateMetadata(total, pageNo, pageSize)})
+}
+
+func (app *Application) RetrieveScan(w http.ResponseWriter, r *http.Request, id string) {
+	var v validator.Validator
+	paramId := chi.URLParam(r, "id")
+
+	v.CheckField(validator.NotBlank(id), "id", "scan_id must be provided")
+	if v.HasErrors() {
+		app.apiValidationError(w, v.FieldErrors)
+		return
+	}
+
+	filter := bson.D{{Key: "id", Value: paramId}}
+	cursor, err := app.DB.Collection(database.ScanCollection).Find(context.TODO(), filter, nil)
+	if err != nil {
+		app.notFound(w, r)
+		return
+	}
+
+	var data []services.NmapScanOut
+	if err = cursor.All(context.TODO(), &data); err != nil {
+		app.Error(w, http.StatusInternalServerError, err.Error(), nil)
+		return
+	}
+	_ = response.JSON(w, http.StatusOK, Envelope{
+		"id":   paramId,
+		"data": data,
+	})
 }
 
 func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
