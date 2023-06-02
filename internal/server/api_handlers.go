@@ -101,6 +101,9 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 		Status:      api.Scheduled,
 		Description: ns.Description,
 	}
+	if ns.Timeout != nil {
+		scan.Timeout = ns.Timeout
+	}
 
 	data, err := json.Marshal(scan)
 	if err != nil {

@@ -92,6 +92,8 @@ components:
             type: string
         type:
           type: string
+        timeout:
+          type: integer
         description:
           type: string
         status:
@@ -118,6 +120,8 @@ components:
           type: array
           items:
             type: string
+        timeout:
+          type: integer
         type:
           type: string
           enum:

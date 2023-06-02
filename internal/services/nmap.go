@@ -81,42 +81,10 @@ type NmapScanIn struct {
 	TaskEnd          []nmap.Task         `xml:"taskend" json:"task_end"`
 }
 
-func ScannerFactory(targets, ports []string, scanType string) (*nmap.Scanner, error) {
-	// todo: this needs to be capable of accepting any number of options
-	// e.g. verbosity, NSE scripts by name and so on.
-	switch scanType {
-	case string(api.PortScan):
-		return nmap.NewScanner(
-			context.Background(),
-			nmap.WithTargets(targets...),
-			nmap.WithPorts(ports...),
-		)
-	case string(api.ServiceDiscovery):
-		return nmap.NewScanner(
-			context.Background(),
-			nmap.WithTargets(targets...),
-			nmap.WithPorts(ports...),
-			nmap.WithServiceInfo(),
-		)
-	case string(api.ServiceDiscoveryDefaultScripts):
-		return nmap.NewScanner(
-			context.Background(),
-			nmap.WithTargets(targets...),
-			nmap.WithPorts(ports...),
-			nmap.WithServiceInfo(),
-			nmap.WithDefaultScript(),
-		)
-	default:
-	}
-	return nmap.NewScanner(
-		context.Background(),
-		nmap.WithTargets(targets...),
-		nmap.WithPorts(ports...),
-	)
-}
-
-func StartScan(s *api.Scan) (*nmap.Run, error) {
-	scanner, err := ScannerFactory(s.Hosts, s.Ports, s.Type)
+// StartScan is the entrypoint to creating Scan. A cancellable timeout and api.Scan
+// must be passed.
+func StartScan(ctx context.Context, s *api.Scan) (*nmap.Run, error) {
+	scanner, err := ScannerFactory(ctx, s.Hosts, s.Ports, s.Type)
 	if err != nil {
 		return nil, err
 	}
@@ -130,4 +98,40 @@ func StartScan(s *api.Scan) (*nmap.Run, error) {
 		log.Warn().Msgf("run finished with warnings: %s\n", *warnings)
 	}
 	return result, nil
+}
+
+// ScannerFactory is the factory which creates nmap.Scanner's.
+func ScannerFactory(ctx context.Context, targets, ports []string, scanType string) (*nmap.Scanner, error) {
+	// todo: this needs to be capable of accepting any number of options
+	// e.g. verbosity, NSE scripts by name and so on.
+
+	switch scanType {
+	case string(api.PortScan):
+		return nmap.NewScanner(
+			ctx,
+			nmap.WithTargets(targets...),
+			nmap.WithPorts(ports...),
+		)
+	case string(api.ServiceDiscovery):
+		return nmap.NewScanner(
+			ctx,
+			nmap.WithTargets(targets...),
+			nmap.WithPorts(ports...),
+			nmap.WithServiceInfo(),
+		)
+	case string(api.ServiceDiscoveryDefaultScripts):
+		return nmap.NewScanner(
+			ctx,
+			nmap.WithTargets(targets...),
+			nmap.WithPorts(ports...),
+			nmap.WithServiceInfo(),
+			nmap.WithDefaultScript(),
+		)
+	default:
+	}
+	return nmap.NewScanner(
+		ctx,
+		nmap.WithTargets(targets...),
+		nmap.WithPorts(ports...),
+	)
 }

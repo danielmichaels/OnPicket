@@ -10,7 +10,10 @@ import (
 	"github.com/nats-io/nats.go"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
+
+var defaultScanTimeoutInSecs = 300
 
 const (
 	ScanQueue        = "scans"
@@ -34,6 +37,11 @@ func (n *Nats) InitSubscribers() error {
 		return err
 	}
 	return nil
+}
+
+type ScanError struct {
+	Message string   `json:"message,omitempty"`
+	Scan    api.Scan `json:"scan"`
 }
 
 func (n *Nats) startScanQueueGroup() error {
@@ -67,15 +75,31 @@ func (n *Nats) startScanQueueGroup() error {
 				n.L.Error().Err(err).Msg("scan status update error")
 				return
 			}
-			sRes, err := services.StartScan(&scan)
-			if err != nil {
-				n.L.Error().Err(err).Msg("scan error")
-				err = n.scanError()
+
+			timeout := defaultScanTimeoutInSecs
+			if scan.Timeout != nil {
+				timeout = *scan.Timeout
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+			defer cancel()
+
+			sRes, err := services.StartScan(ctx, &scan)
+			select {
+			case <-ctx.Done():
+				err = n.scanError(&scan, ctx.Err())
 				if err != nil {
-					n.L.Error().Err(err).Msg("scan publish ScanFail error")
 					return
 				}
 				return
+			default:
+				if err != nil {
+					err = n.scanError(&scan, err)
+					if err != nil {
+						return
+					}
+					return
+				}
 			}
 
 			nmapResult := services.NmapScanIn{
@@ -179,6 +203,14 @@ func (n *Nats) failScanQueueGroup() error {
 	return nil
 }
 
-func (n *Nats) scanError() error {
-	return n.Conn.Publish(ScanFailSubj, []byte("scan failed"))
+func (n *Nats) scanError(data *api.Scan, e error) error {
+	sc := ScanError{
+		Message: e.Error(),
+		Scan:    *data,
+	}
+	b, err := json.Marshal(sc)
+	if err != nil {
+		return err
+	}
+	return n.Conn.Publish(ScanFailSubj, b)
 }

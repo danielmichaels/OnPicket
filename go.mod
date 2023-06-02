@@ -3,7 +3,7 @@ module github.com/danielmichaels/onpicket
 go 1.19
 
 require (
-	github.com/Ullaakut/nmap/v3 v3.0.1
+	github.com/Ullaakut/nmap/v3 v3.0.2
 	github.com/deepmap/oapi-codegen v1.12.4
 	github.com/getkin/kin-openapi v0.116.0
 	github.com/go-chi/chi/v5 v5.0.7
