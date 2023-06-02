@@ -1,6 +1,6 @@
 # onpicket
 
-> Uptime monitoring
+> External asset threat modeling
 
 ## Server setup
 
@@ -9,22 +9,32 @@ To run the server:
 ```shell
 air
 # OR
-# make run/development
+# task dev
 ```
 
 ## Requirements
 
-This expects at least the following:
+- MongoDB
+- NATS
 
-- [goose](https://github.com/pressly/goose)
-- [sqlc](https://sqlc.dev)
-- [air](https://github.com/cosmtrek/air)
+## Run locally
 
-The rest will be installed during `go mod tidy`.
+Two options:
+
+### Docker and hot-reloading locally (recommended)
+
+The server needs an active NATS and MongoDB server. To create these containers
+run `task mongo` and `task nats`. Once they are up run `task dev`.
+
+You can now develop with hot-reloading.
+
+### Docker compose (no hot-reload)
+
+Simply run `docker compose up`
 
 ## Assets setup
 
 The CSS and JS requires some manual building occasionally.
 
 A `Makefile` helper exists to do both of the following in a single command.
-`make assets` will regenerate new bundles.
+`task assets` will regenerate new bundles.

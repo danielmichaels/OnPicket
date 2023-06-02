@@ -8,6 +8,15 @@ import (
 	"strings"
 )
 
+var (
+	validationFailed    = "validation failed"
+	notFound            = "the requested resource could not be found"
+	internalServerError = "the server encountered a problem and could not process your request"
+	methodNotAllow      = "the %s method is not supported for this resource"
+	rateLimitExceeded   = "rate limit exceeded"
+	//badRequest          = "bad request"
+)
+
 func (app *Application) Error(w http.ResponseWriter, code int, message string, errorInfo map[string]interface{}) {
 	apiErr := api.Error{
 		Code:   int32(code),
@@ -31,28 +40,27 @@ func (app *Application) errorMessage(w http.ResponseWriter, r *http.Request, sta
 }
 
 func (app *Application) serverError(w http.ResponseWriter, r *http.Request, err error) {
-	app.Logger.Error().Err(err).Msg("server error")
-
-	message := "The server encountered a problem and could not process your request"
-	app.errorMessage(w, r, http.StatusInternalServerError, message, nil)
+	app.errorMessage(w, r, http.StatusInternalServerError, internalServerError, nil)
 }
 
 func (app *Application) notFound(w http.ResponseWriter, r *http.Request) {
-	message := "The requested resource could not be found"
-	app.errorMessage(w, r, http.StatusNotFound, message, nil)
+	app.errorMessage(w, r, http.StatusNotFound, notFound, nil)
 }
 
 func (app *Application) methodNotAllowed(w http.ResponseWriter, r *http.Request) {
-	message := fmt.Sprintf("The %s method is not supported for this resource", r.Method)
+	message := fmt.Sprintf(methodNotAllow, r.Method)
 	app.errorMessage(w, r, http.StatusMethodNotAllowed, message, nil)
+}
+func (app *Application) rateLimitExceededResponse(w http.ResponseWriter, r *http.Request) {
+	app.errorMessage(w, r, http.StatusTooManyRequests, rateLimitExceeded, nil)
 }
 
 //func (app *Application) badRequest(w http.ResponseWriter, r *http.Request, err error) {
-//	app.errorMessage(w, r, http.StatusBadRequest, err.Error(), nil)
+//	app.errorMessage(w, r, http.StatusBadRequest, badRequest, nil)
 //}
 
-func (app *Application) apiValidationError(w http.ResponseWriter, errors string, errorInfo map[string]interface{}) {
-	app.Error(w, http.StatusUnprocessableEntity, errors, Envelope{"fields": errorInfo})
+func (app *Application) apiValidationError(w http.ResponseWriter, errorInfo map[string]interface{}) {
+	app.Error(w, http.StatusUnprocessableEntity, validationFailed, Envelope{"fields": errorInfo})
 }
 
 //func (app *Application) invalidAuthenticationToken(w http.ResponseWriter, r *http.Request) {

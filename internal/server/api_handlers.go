@@ -35,12 +35,12 @@ func (app *Application) Healthz(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (app *Application) ListScans(w http.ResponseWriter, r *http.Request, params api.ListScansParams) {
-	v := validator.Validator{}
+	var v validator.Validator
 
 	pageNo := request.ReadInt(params.Page, "page", 1, &v)
 	pageSize := request.ReadInt(params.PageSize, "page_size", 20, &v)
 	if v.HasErrors() {
-		app.apiValidationError(w, "validation failed", v.FieldErrors)
+		app.apiValidationError(w, v.FieldErrors)
 		return
 	}
 
@@ -69,16 +69,17 @@ func (app *Application) ListScans(w http.ResponseWriter, r *http.Request, params
 }
 
 func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
+	var v validator.Validator
 	var ns api.ScanBody
 	err := request.DecodeJSON(w, r, &ns)
 	if err != nil {
-		app.Error(w, http.StatusInternalServerError, err.Error(), nil)
+		v.AddFieldError("json", err.Error())
+		app.apiValidationError(w, v.FieldErrors)
 		return
 	}
 
 	// make this a function
-	v := validator.Validator{}
-	v.CheckField(ns.Host != "", "host", "host must not be empty")
+	v.CheckField(ns.Hosts != nil, "hosts", "host must not be empty")
 	v.CheckField(ns.Ports != nil, "ports", "ports must not be empty")
 	// todo: validate against:
 	// -p-
@@ -89,20 +90,21 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 	v.CheckField(validator.In(ns.Type, enumTypes...), "type", "type must be a valid option")
 
 	if v.HasErrors() {
-		app.apiValidationError(w, "validation failed", v.FieldErrors)
+		app.apiValidationError(w, v.FieldErrors)
 		return
 	}
 	scan := api.Scan{
 		Id:          generateName(string(ns.Type)),
 		Ports:       ns.Ports,
-		Host:        ns.Host,
+		Hosts:       ns.Hosts,
 		Type:        string(ns.Type),
 		Status:      api.Scheduled,
 		Description: ns.Description,
 	}
+	if ns.Timeout != nil {
+		scan.Timeout = ns.Timeout
+	}
 
-	// poc
-	// publish message to NATS
 	data, err := json.Marshal(scan)
 	if err != nil {
 		app.serverError(w, r, err)
@@ -113,11 +115,5 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 		app.serverError(w, r, err)
 		return
 	}
-
-	//app.DB.Collection(database.ScanCollection).InsertOne(
-	//	context.TODO(),
-	//	bson.M{"id": scan.Id, "status": scan.Status},
-	//)
-
 	_ = response.JSON(w, http.StatusCreated, scan)
 }
