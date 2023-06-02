@@ -33,9 +33,10 @@ func CalculateMetadata(totalRecords int64, page, pageSize int64) NmapMetadata {
 type NmapScanOut struct {
 	ID          string          `json:"id,omitempty" bson:"id"`
 	Status      string          `json:"status,omitempty"`
+	Summary     string          `json:"summary,omitempty"`
 	ScanType    api.NewScanType `json:"scan_type,omitempty"`
 	Description string          `json:"description,omitempty"`
-	HostArray   []string        `json:"hosts_array"`
+	HostArray   []string        `json:"hosts_array,omitempty"`
 	Args        string          `xml:"args,attr" json:"args"`
 	Scanner     string          `xml:"scanner,attr" json:"scanner"`
 	StartStr    string          `xml:"startstr,attr" json:"start_str"`
@@ -58,9 +59,10 @@ type NmapScanOut struct {
 type NmapScanIn struct {
 	ID               string              `json:"id"`
 	Status           string              `json:"status,omitempty"`
+	Summary          string              `json:"summary,omitempty"`
 	ScanType         string              `json:"scan_type,omitempty"`
 	Description      string              `json:"description,omitempty"`
-	ScanHosts        []string            `json:"scan_hosts"`
+	HostsArray       []string            `json:"hosts_array,omitempty"`
 	Args             string              `xml:"args,attr" json:"args"`
 	ProfileName      string              `xml:"profile_name,attr" json:"profile_name"`
 	Scanner          string              `xml:"scanner,attr" json:"scanner"`
@@ -102,9 +104,6 @@ func StartScan(ctx context.Context, s *api.Scan) (*nmap.Run, error) {
 
 // ScannerFactory is the factory which creates nmap.Scanner's.
 func ScannerFactory(ctx context.Context, targets, ports []string, scanType string) (*nmap.Scanner, error) {
-	// todo: this needs to be capable of accepting any number of options
-	// e.g. verbosity, NSE scripts by name and so on.
-
 	switch scanType {
 	case string(api.PortScan):
 		return nmap.NewScanner(

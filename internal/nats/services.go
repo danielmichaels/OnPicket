@@ -62,7 +62,7 @@ func (n *Nats) startScanQueueGroup() error {
 					{Key: "id", Value: scan.Id},
 					{Key: "scan_type", Value: scan.Type},
 					{Key: "description", Value: scan.Description},
-					{Key: "scan_hosts", Value: scan.Hosts},
+					{Key: "hosts_array", Value: scan.Hosts},
 				}},
 			}
 			_, err = n.DB.Collection(database.ScanCollection).UpdateOne(
@@ -107,7 +107,7 @@ func (n *Nats) startScanQueueGroup() error {
 				Status:           string(api.Complete),
 				ScanType:         scan.Type,
 				Description:      scan.Description,
-				ScanHosts:        scan.Hosts,
+				HostsArray:       scan.Hosts,
 				Args:             sRes.Args,
 				ProfileName:      sRes.ProfileName,
 				Scanner:          sRes.Scanner,
@@ -156,6 +156,7 @@ func (n *Nats) completeScanQueueGroup() error {
 			n.L.Error().Err(err).Msgf("err: unmarshalling NATS message")
 			return
 		}
+		s.Summary = "successful scan"
 		filter := bson.D{{Key: "id", Value: s.ID}}
 		opts := options.Update().SetUpsert(true)
 		fields := bson.D{
@@ -171,8 +172,6 @@ func (n *Nats) completeScanQueueGroup() error {
 			n.L.Error().Err(err).Msgf("err: inserting document")
 			return
 		}
-		// update db with scan sucess
-		// (optional) alert customer scan completed
 	}); err != nil {
 		n.L.Error().Err(err).Msgf("err subscribing")
 		return err
@@ -203,6 +202,7 @@ func (n *Nats) failScanQueueGroup() error {
 	return nil
 }
 
+// scanError updates the services with error details from the caller.
 func (n *Nats) scanError(data *api.Scan, e error) error {
 	sc := ScanError{
 		Message: e.Error(),
@@ -210,6 +210,24 @@ func (n *Nats) scanError(data *api.Scan, e error) error {
 	}
 	b, err := json.Marshal(sc)
 	if err != nil {
+		return err
+	}
+	filter := bson.D{{Key: "id", Value: sc.Scan.Id}}
+	opts := options.Update().SetUpsert(true)
+	fields := bson.D{
+		{Key: "$set", Value: bson.D{
+			{Key: "status", Value: api.Failed},
+			{Key: "summary", Value: sc.Message},
+		}},
+	}
+	_, err = n.DB.Collection(database.ScanCollection).UpdateOne(
+		context.TODO(),
+		filter,
+		fields,
+		opts,
+	)
+	if err != nil {
+		n.L.Error().Err(err).Msgf("err: inserting document")
 		return err
 	}
 	return n.Conn.Publish(ScanFailSubj, b)

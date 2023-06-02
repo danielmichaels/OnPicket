@@ -28,7 +28,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PageSizeParam'
-
+        - $ref: '#/components/parameters/PageSortParam'
       responses:
         '200':
           description: Scan list response
@@ -38,12 +38,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Scan'
-        default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     post:
       summary: Create a new Scan
       operationId: createScan
@@ -60,7 +54,32 @@ paths:
           description: Method not found
         '400':
           description: Bad request
-
+        default:
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /scans/{id}:
+    get:
+      summary: Retrieve a single scan entry
+      operationId: retrieveScan
+      parameters:
+        - name: id
+          in: path
+          description: Scan ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scan'
         default:
           description: Unexpected error
           content:
@@ -179,6 +198,13 @@ components:
       name: page_size
       in: query
       description: page size for pagination
+      required: false
+      schema:
+        type: string
+    PageSortParam:
+      name: sort
+      in: query
+      description: sort results
       required: false
       schema:
         type: string
