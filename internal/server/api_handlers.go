@@ -2,13 +2,7 @@ package server
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"net/http"
-	"strings"
-
 	"github.com/danielmichaels/onpicket/internal/database"
 	natsio "github.com/danielmichaels/onpicket/internal/nats"
 	"github.com/danielmichaels/onpicket/internal/request"
@@ -20,14 +14,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"net/http"
 )
-
-// generateName creates a random name for use in identifiers
-func generateName(s string) string {
-	b := make([]byte, 4)
-	_, _ = rand.Read(b)
-	return fmt.Sprintf("%s-%s", s, hex.EncodeToString(b))
-}
 
 func (app *Application) Healthz(w http.ResponseWriter, _ *http.Request) {
 	health := api.Healthz{
@@ -36,16 +24,7 @@ func (app *Application) Healthz(w http.ResponseWriter, _ *http.Request) {
 	}
 	_ = response.JSON(w, http.StatusOK, health)
 }
-func sortDirection(s string) bson.D {
-	switch strings.ToLower(s) {
-	case "asc":
-		return bson.D{{Key: "_id", Value: -1}}
-	case "desc":
-		return bson.D{{Key: "_id", Value: 1}}
-	default:
-		return bson.D{{Key: "_id", Value: -1}}
-	}
-}
+
 func (app *Application) ListScans(w http.ResponseWriter, r *http.Request, params api.ListScansParams) {
 	var v validator.Validator
 
