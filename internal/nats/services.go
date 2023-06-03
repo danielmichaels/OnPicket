@@ -3,6 +3,7 @@ package natsio
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/danielmichaels/onpicket/internal/database"
 	"github.com/danielmichaels/onpicket/internal/funcs"
 	"github.com/danielmichaels/onpicket/internal/services"
@@ -13,7 +14,9 @@ import (
 	"time"
 )
 
-var defaultScanTimeoutInSecs = 300
+var (
+	timeUnit = time.Second
+)
 
 const (
 	ScanQueue        = "scans"
@@ -76,12 +79,12 @@ func (n *Nats) startScanQueueGroup() error {
 				return
 			}
 
-			timeout := defaultScanTimeoutInSecs
+			timeout := n.C.AppConf.ScanTimeout
 			if scan.Timeout != nil {
 				timeout = *scan.Timeout
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*timeUnit)
 			defer cancel()
 
 			sRes, err := services.StartScan(ctx, &scan)
@@ -102,30 +105,29 @@ func (n *Nats) startScanQueueGroup() error {
 				}
 			}
 
-			nmapResult := services.NmapScanIn{
-				ID:               scan.Id,
-				Status:           string(api.Complete),
-				ScanType:         scan.Type,
-				Description:      scan.Description,
-				HostsArray:       scan.Hosts,
-				Args:             sRes.Args,
-				ProfileName:      sRes.ProfileName,
-				Scanner:          sRes.Scanner,
-				StartStr:         sRes.StartStr,
-				Version:          sRes.Version,
-				XMLOutputVersion: sRes.XMLOutputVersion,
-				Debugging:        sRes.Debugging,
-				Stats:            sRes.Stats,
-				ScanInfo:         sRes.ScanInfo,
-				Start:            sRes.Start,
-				Verbose:          sRes.Verbose,
-				Hosts:            sRes.Hosts,
-				PostScripts:      sRes.PostScripts,
-				PreScripts:       sRes.PreScripts,
-				Targets:          sRes.Targets,
-				TaskBegin:        sRes.TaskBegin,
-				TaskProgress:     sRes.TaskProgress,
-				TaskEnd:          sRes.TaskEnd,
+			nmapResult := services.NmapScan{
+				ID:          scan.Id,
+				Status:      string(api.Complete),
+				ScanType:    api.NewScanType(scan.Type),
+				Description: scan.Description,
+				HostsArray:  scan.Hosts,
+				Scan: services.NmapRun{
+					Args:        sRes.Args,
+					Scanner:     sRes.Scanner,
+					StartStr:    sRes.StartStr,
+					Version:     sRes.Version,
+					Debugging:   sRes.Debugging,
+					Stats:       sRes.Stats,
+					ScanInfo:    sRes.ScanInfo,
+					Start:       sRes.Start,
+					Verbose:     sRes.Verbose,
+					Hosts:       sRes.Hosts,
+					PostScripts: sRes.PostScripts,
+					PreScripts:  sRes.PreScripts,
+					Targets:     sRes.Targets,
+					TaskBegin:   sRes.TaskBegin,
+					TaskEnd:     sRes.TaskEnd,
+				},
 			}
 
 			r, err := json.Marshal(nmapResult)
@@ -150,7 +152,7 @@ func (n *Nats) completeScanQueueGroup() error {
 	if _, err := n.Conn.QueueSubscribe(ScanCompleteSubj, ScanQueue, func(msg *nats.Msg) {
 		n.L.Debug().Msgf("%q received: %s", ScanCompleteSubj, string(msg.Data))
 
-		var s services.NmapScanIn
+		var s services.NmapScan
 		err := json.Unmarshal(msg.Data, &s)
 		if err != nil {
 			n.L.Error().Err(err).Msgf("err: unmarshalling NATS message")
@@ -204,8 +206,17 @@ func (n *Nats) failScanQueueGroup() error {
 
 // scanError updates the services with error details from the caller.
 func (n *Nats) scanError(data *api.Scan, e error) error {
+	var errString string
+	switch {
+	case e == context.Canceled:
+		errString = "scan cancelled"
+	case e == context.DeadlineExceeded:
+		errString = fmt.Sprintf("scan timeout exceeded: (%v)", time.Duration(*data.Timeout)*timeUnit)
+	default:
+		errString = e.Error()
+	}
 	sc := ScanError{
-		Message: e.Error(),
+		Message: errString,
 		Scan:    *data,
 	}
 	b, err := json.Marshal(sc)

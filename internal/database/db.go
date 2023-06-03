@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/danielmichaels/onpicket/internal/config"
 	"github.com/rs/zerolog/log"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -43,6 +44,21 @@ func InitDatabase(db string) (*mongo.Database, error) {
 	err = client.Ping(ctx, readpref.Primary())
 	if err != nil {
 		log.Error().Err(err).Msg("failed to ping mongo instance")
+		return nil, err
+	}
+
+	indexes := []mongo.IndexModel{
+		{
+			Keys:    bson.M{"id": 1},
+			Options: options.Index().SetUnique(true),
+		},
+	}
+	_, err = client.Database(db).
+		Collection(ScanCollection).
+		Indexes().
+		CreateMany(context.TODO(), indexes)
+	if err != nil {
+		log.Error().Err(err).Interface("indexes", indexes).Msg("failed to create indexes")
 		return nil, err
 	}
 	log.Info().Msg("successfully connected and pinged the database.")

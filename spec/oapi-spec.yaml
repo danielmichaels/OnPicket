@@ -16,6 +16,13 @@ paths:
       responses:
         '200':
           description: Health endpoint
+          headers:
+            X-Ratelimit-Limit:
+              $ref: '#/components/headers/X-Ratelimit-Limit'
+            X-Ratelimit-Remaining:
+              $ref: '#/components/headers/X-Ratelimit-Remaining'
+            X-Ratelimit-Reset:
+              $ref: '#/components/headers/X-Ratelimit-Reset'
           content:
             application/json:
               schema:
@@ -32,6 +39,13 @@ paths:
       responses:
         '200':
           description: Scan list response
+          headers:
+            X-Ratelimit-Limit:
+              $ref: '#/components/headers/X-Ratelimit-Limit'
+            X-Ratelimit-Remaining:
+              $ref: '#/components/headers/X-Ratelimit-Remaining'
+            X-Ratelimit-Reset:
+              $ref: '#/components/headers/X-Ratelimit-Reset'
           content:
             application/json:
               schema:
@@ -46,14 +60,17 @@ paths:
       responses:
         '201':
           description: Scan response
+          headers:
+            X-Ratelimit-Limit:
+              $ref: '#/components/headers/X-Ratelimit-Limit'
+            X-Ratelimit-Remaining:
+              $ref: '#/components/headers/X-Ratelimit-Remaining'
+            X-Ratelimit-Reset:
+              $ref: '#/components/headers/X-Ratelimit-Reset'
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Scan'
-        '405':
-          description: Method not found
-        '400':
-          description: Bad request
         default:
           description: Unexpected error
           content:
@@ -74,6 +91,13 @@ paths:
       responses:
         '200':
           description: Successful response
+          headers:
+            X-Ratelimit-Limit:
+              $ref: '#/components/headers/X-Ratelimit-Limit'
+            X-Ratelimit-Remaining:
+              $ref: '#/components/headers/X-Ratelimit-Remaining'
+            X-Ratelimit-Reset:
+              $ref: '#/components/headers/X-Ratelimit-Reset'
           content:
             application/json:
               schema:
@@ -89,6 +113,17 @@ paths:
 
 
 components:
+  headers:
+    X-Ratelimit-Limit:
+      schema:
+        type: integer
+    X-Ratelimit-Remaining:
+      schema:
+        type: integer
+    X-Ratelimit-Reset:
+      schema:
+        type: integer
+
   schemas:
     Scan:
       required:

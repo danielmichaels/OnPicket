@@ -6,14 +6,10 @@ import (
 	"html/template"
 	"math"
 	"net/url"
-	"runtime/debug"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"unicode"
-
-	"github.com/rs/zerolog/log"
 
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/language"
@@ -229,25 +225,4 @@ func toInt64(i any) (int64, error) {
 	}
 
 	return 0, fmt.Errorf("unable to convert type %T to int", i)
-}
-
-// BackgroundFunc executes a given function in a goroutine.
-func BackgroundFunc(fn func()) {
-	// Launch a background goroutine.
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		// Recover any panic.
-		defer func() {
-			if err := recover(); err != nil {
-				log.Warn().Msgf("background-task err: %v", err)
-				debug.PrintStack()
-			}
-		}()
-
-		// Execute the arbitrary function that we passed as the parameter.
-		wg.Done()
-		fn()
-	}()
-	wg.Wait()
 }
