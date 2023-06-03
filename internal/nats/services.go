@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	defaultScanTimeoutInSecs = 300
-	timeUnit                 = time.Second
+	timeUnit = time.Second
 )
 
 const (
@@ -80,7 +79,7 @@ func (n *Nats) startScanQueueGroup() error {
 				return
 			}
 
-			timeout := defaultScanTimeoutInSecs
+			timeout := n.C.AppConf.ScanTimeout
 			if scan.Timeout != nil {
 				timeout = *scan.Timeout
 			}

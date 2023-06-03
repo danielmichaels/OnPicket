@@ -44,6 +44,8 @@ type appConf struct {
 	LogConcise bool   `env:"LOG_CONCISE,default=true"`
 	LogJson    bool   `env:"LOG_JSON,default=false"`
 	LogCaller  bool   `env:"LOG_CALLER,default=false"`
+	// time in seconds
+	ScanTimeout int `env:"SCAN_TIMEOUT,default=300"`
 }
 
 // AppConfig Setup and install the applications' configuration environment variables
