@@ -82,6 +82,10 @@ func (app *Application) RetrieveScan(w http.ResponseWriter, r *http.Request, id 
 		app.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
 	}
+	if len(data) == 0 {
+		app.notFound(w, r)
+		return
+	}
 	_ = response.JSON(w, http.StatusOK, Envelope{
 		"id":   paramId,
 		"data": data,
