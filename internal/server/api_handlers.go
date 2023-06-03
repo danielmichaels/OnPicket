@@ -50,7 +50,7 @@ func (app *Application) ListScans(w http.ResponseWriter, r *http.Request, params
 		return
 	}
 
-	var data []services.NmapScanOut
+	var data []services.NmapScan
 	if err = cursor.All(context.TODO(), &data); err != nil {
 		app.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
@@ -77,7 +77,7 @@ func (app *Application) RetrieveScan(w http.ResponseWriter, r *http.Request, id 
 		return
 	}
 
-	var data []services.NmapScanOut
+	var data []services.NmapScan
 	if err = cursor.All(context.TODO(), &data); err != nil {
 		app.Error(w, http.StatusInternalServerError, err.Error(), nil)
 		return
