@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>On Picket | OpenAPI Specification</title>
+    <script src="https://unpkg.com/@stoplight/elements/web-components.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/@stoplight/elements/styles.min.css">
+    <style>
+      body {
+        font-family: ui-sans-serif, sans-serif;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+
+  <elements-api
+    id="docs"
+    router="hash"
+    layout="sidebar"
+    logo="https://danielms.site/favicons/favicon.ico"
+    apiDescriptionDocument="{{ .SpecString }}">
+  </elements-api>
+</html>

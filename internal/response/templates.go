@@ -8,6 +8,14 @@ import (
 	"net/http"
 )
 
+// ApiDocsPage is a custom page which does not inherit from any of the other templates.
+func ApiDocsPage(w http.ResponseWriter, status int, data any) error {
+	patterns := []string{"pages/elements.tmpl"}
+	headers := http.Header{}
+	headers.Add("Content-Type", "text/html; charset=utf-8")
+	return NamedTemplateWithHeaders(w, status, data, headers, "elements.tmpl", patterns...)
+}
+
 func Page(w http.ResponseWriter, status int, data any, pagePath string) error {
 	return PageWithHeaders(w, status, data, nil, pagePath)
 }

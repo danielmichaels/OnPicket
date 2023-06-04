@@ -2,20 +2,38 @@ openapi: "3.0.0"
 info:
   version: "0.0.1"
   title: "OnPicket API"
-  description: ""
+  description:
+    On Picket is an external security asset management tool focusing on automated
+    scanning of your external perimeter.
+    <br>
+    <br>
+    On Picket's only scanner so far is `nmap`. Very few `nmap` commands are supported in
+    this version. More will follow as the application reaches it's first release.
+    <br>
+    <br>
+    **Note**
+    <br>
+    This application is in Alpha development and may have frequent breaking changes
+    prior to the first official release.
+
   license:
     name: "Apache 2.0"
     url: "https://www.apache.org/licenses/LICENSE-2.0.html"
 servers:
+  - url: https://onpicket.com/api
+    description: Production
   - url: http://localhost:9898/api
+    description: Local development
 paths:
   /healthz:
     get:
-      summary: Healthcheck endpoint for the API
+      summary: Healthcheck
+      description:
+        Healthcheck endpoint for external monitoring.
       operationId: healthz
       responses:
         '200':
-          description: Health endpoint
+          description: Server is up and responding
           headers:
             X-Ratelimit-Limit:
               $ref: '#/components/headers/X-Ratelimit-Limit'
@@ -30,7 +48,11 @@ paths:
                   $ref: '#/components/schemas/Healthz'
   /scans:
     get:
-      summary: Return all scans
+      summary: List Scans
+      description:
+        List all Scans from the database.
+
+        Filtering is supported on the endpoint.
       operationId: listScans
       parameters:
         - $ref: '#/components/parameters/PageParam'
@@ -53,7 +75,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/Scan'
     post:
-      summary: Create a new Scan
+      summary: Create Scan
       operationId: createScan
       requestBody:
         $ref: '#/components/requestBodies/ScanBody'
@@ -79,7 +101,9 @@ paths:
                 $ref: '#/components/schemas/Error'
   /scans/{id}:
     get:
-      summary: Retrieve a single scan entry
+      summary: Retrieve Scan
+      description:
+        Retrieve a single scan object by its `id`
       operationId: retrieveScan
       parameters:
         - name: id
@@ -115,41 +139,54 @@ paths:
 components:
   headers:
     X-Ratelimit-Limit:
+      description: number of requests permitted within the window
       schema:
         type: integer
     X-Ratelimit-Remaining:
+      description: number of requests remaining before exceeding the limit
       schema:
         type: integer
     X-Ratelimit-Reset:
+      description: time in unix when the rate limit window resets
       schema:
         type: integer
 
   schemas:
     Scan:
+      summary:
+        Scan object for a given scan.
       required:
         - id
-        - hosts
+        - hosts_array
         - ports
+        - summary
+        - scan_type
         - description
-        - type
         - status
+        - data
       properties:
         id:
           type: string
-        hosts:
+          example: service_discovery_default_scripts-096389c5
+        hosts_array:
           type: array
+          example: [ "google.com", "netlify.com" ]
           items:
             type: string
         ports:
           type: array
+          example: [ "22", "53" ]
           items:
             type: string
-        type:
+        scan_type:
           type: string
-        timeout:
-          type: integer
+          example: port_scan
         description:
           type: string
+          example: my description
+        summary:
+          type: string
+          example: successful scan
         status:
           type: string
           enum:
@@ -157,8 +194,17 @@ components:
             - scheduled
             - in_progress
             - failed
+          example: complete
+        timeout:
+          type: integer
+          description: time in seconds
+          example: 3000
+        data:
+          $ref: '#/components/schemas/ScanData'
 
     NewScan:
+      description:
+        Request body for creating a new scan.
       required:
         - hosts
         - ports
@@ -168,21 +214,29 @@ components:
       properties:
         hosts:
           type: array
+          example: [ "google.com", "netlify.com" ]
           items:
             type: string
         ports:
           type: array
+          description: ports to scan. must be supplied in an array
+          example: [ "22", "53", "60000-63000" ]
           items:
             type: string
         timeout:
           type: integer
+          description: time in seconds
+          example: 3000
         type:
           type: string
+          description: type of scan. must be one of the allowed types
           enum:
             - port_scan
             - service_discovery
             - service_discovery_default_scripts
         description:
+          description: user entered description for easier identification
+          example: DNS tcp and udp scan
           type: string
 
     Error:
@@ -202,6 +256,8 @@ components:
           type: object
 
     Healthz:
+      description:
+        Healthcheck endpoint for external monitoring.
       type: object
       required:
         - status
@@ -209,8 +265,382 @@ components:
       properties:
         status:
           type: string
+          example: "OK"
         version:
           type: string
+          example: "0c274594c650e503530a4b3e240bde60c6b55dee"
+
+    ScanData:
+      description:
+        The entire response object for a single scan.
+      type: object
+      properties:
+        args:
+          type: string
+          description: nmap command equivalent
+          example: "/usr/bin/nmap -p 1-600 -sV -sC -oX - google.com"
+        scanner:
+          type: string
+        start_str:
+          type: string
+          description: scan start time
+          example: "Sat Jun  3 23:00:57 2023"
+        version:
+          type: string
+          description: nmap version on server
+          example: "7.93"
+        runstats:
+          type: object
+          properties:
+            finished:
+              type: object
+              properties:
+                time:
+                  type: integer
+                  format: int64
+                  example: -62135596800
+                time_str:
+                  type: string
+                  example: Sat Jun  3 23:23:58 2023
+                elapsed:
+                  type: number
+                  example: 28.2
+                summary:
+                  type: string
+                  example: Nmap done at Sat Jun  3 23:23:58 2023; 2 IP addresses (2 hosts up) scanned in 28.20 seconds
+                exit:
+                  type: string
+                  example: success
+                error_msg:
+                  type: string
+            hosts:
+              type: object
+              properties:
+                up:
+                  type: integer
+                down:
+                  type: integer
+                total:
+                  type: integer
+        scan_info:
+          type: object
+          properties:
+            num_services:
+              type: integer
+              format: int32
+              example: 60000
+            protocol:
+              type: string
+              example: tcp
+            scan_flags:
+              type: string
+              example:
+            services:
+              type: string
+              example: 1-60000
+            type:
+              type: string
+              example: connect
+        start:
+          type: number
+        verbose:
+          type: object
+          properties:
+            level:
+              type: integer
+        hosts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScanHostsArray'
+
+
+    ScanHostsArray:
+      type: object
+      description:
+        The detailed response from a single host during the scan event. Each host
+        will have their own object within the hosts array.
+      properties:
+        distance:
+          type: object
+          properties:
+            value:
+              type: integer
+              format: int32
+              example: 0
+        end_time:
+          type: integer
+          format: int64
+          example: -62135596800
+        ip_id_sequence:
+          type: object
+          properties:
+            class:
+              type: string
+              example:
+            values:
+              type: string
+              example:
+        os:
+          type: object
+          properties:
+            ports_used:
+              type: string
+              format: nullable
+            os_matches:
+              type: string
+              format: nullable
+            os_fingerprints:
+              type: string
+              format: nullable
+        start_time:
+          type: integer
+          format: int64
+          example: -62135596800
+        timed_out:
+          type: boolean
+        status:
+          type: object
+          properties:
+            state:
+              type: string
+              example: up
+            reason:
+              type: string
+              example: syn-ack
+            reason_ttl:
+              type: integer
+              format: int32
+              example: 42
+        tcp_sequence:
+          type: object
+          properties:
+            index:
+              type: integer
+              format: int32
+              example: 0
+            difficulty:
+              type: string
+              example:
+            values:
+              type: string
+              example:
+        tcp_ts_sequence:
+          type: object
+          properties:
+            class:
+              type: string
+              example:
+            values:
+              type: string
+              example:
+        times:
+          type: object
+          properties:
+            srtt:
+              type: string
+              example: 262366
+            rttv:
+              type: string
+              example: 777
+            to:
+              type: string
+              example: 265474
+        trace:
+          type: object
+          properties:
+            proto:
+              type: string
+              example:
+            port:
+              type: integer
+              format: int32
+              example: 0
+            hops:
+              type: string
+              format: nullable
+        uptime:
+          type: object
+          properties:
+            seconds:
+              type: integer
+              format: int32
+              example: 0
+            last_boot:
+              type: string
+              example:
+        comment:
+          type: string
+          example:
+        addresses:
+          type: array
+          items:
+            type: object
+            properties:
+              addr:
+                type: string
+                example: 170.64.132.122
+              addr_type:
+                type: string
+                example: ipv4
+              vendor:
+                type: string
+                example:
+        extra_ports:
+          type: array
+          items:
+            type: object
+            properties:
+              state:
+                type: string
+                example: closed
+              count:
+                type: integer
+                format: int32
+                example: 595
+              reasons:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    reason:
+                      type: string
+                      example: reset
+                    count:
+                      type: integer
+                      format: int32
+                      example: 595
+        hostnames:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: fn.dansult.space
+              type:
+                type: string
+                example: user
+        host_scripts:
+          type: string
+          format: nullable
+        ports:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+                format: int32
+                example: 22
+              protocol:
+                type: string
+                example: tcp
+              owner:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example:
+              service:
+                type: object
+                properties:
+                  device_type:
+                    type: string
+                    example:
+                  extra_info:
+                    type: string
+                    example: Ubuntu Linux; protocol 2.0
+                  high_version:
+                    type: string
+                    example:
+                  hostname:
+                    type: string
+                    example:
+                  low_version:
+                    type: string
+                    example:
+                  method:
+                    type: string
+                    example: probed
+                  name:
+                    type: string
+                    example: ssh
+                  os_type:
+                    type: string
+                    example: Linux
+                  product:
+                    type: string
+                    example: OpenSSH
+                  proto:
+                    type: string
+                    example:
+                  rpc_num:
+                    type: string
+                    example:
+                  service_fp:
+                    type: string
+                    example:
+                  tunnel:
+                    type: string
+                    example:
+                  version:
+                    type: string
+                    example: 8.2p1 Ubuntu 4ubuntu0.5
+                  confidence:
+                    type: integer
+                    format: int32
+                    example: 10
+                  cpes:
+                    type: array
+                    items:
+                      type: string
+                      example: cpe:/a:openbsd:openssh:8.2p1
+              state:
+                type: object
+                properties:
+                  state:
+                    type: string
+                    example: open
+                  reason:
+                    type: string
+                    example: syn-ack
+                  reason_ip:
+                    type: string
+                    example:
+                  reason_ttl:
+                    type: integer
+                    format: int32
+                    example: 42
+              scripts:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      example: ssh-hostkey
+                    output:
+                      type: string
+                      example:
+                        3072 7e3d889a178a364aac1f958ee8d011cd (RSA)
+                        256 ffdd12f072ba03d9585eb586c8e5733b (ECDSA)
+                        256 7600a7f86e4addbe73d8740d2f687629 (ED25519)
+                    tables:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          elements:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                key:
+                                  type: string
+                                  example: type
+                                value:
+                                  type: string
+                                  example: ssh-rsa
 
   requestBodies:
     ScanBody:
@@ -226,20 +656,23 @@ components:
       name: page
       in: query
       description: page number for pagination
+      example: 2
       required: false
       schema:
         type: string
     PageSizeParam:
       name: page_size
       in: query
-      description: page size for pagination
+      description: page size for pagination. default is 20
+      example: 50
       required: false
       schema:
         type: string
     PageSortParam:
       name: sort
       in: query
-      description: sort results
+      description: sort results by 'asc' or 'desc'. default is 'asc'
+      example: asc
       required: false
       schema:
         type: string
