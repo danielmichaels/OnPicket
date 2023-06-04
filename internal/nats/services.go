@@ -63,9 +63,10 @@ func (n *Nats) startScanQueueGroup() error {
 				{Key: "$set", Value: bson.D{
 					{Key: "status", Value: string(api.InProgress)},
 					{Key: "id", Value: scan.Id},
-					{Key: "scan_type", Value: scan.Type},
+					{Key: "scan_type", Value: scan.ScanType},
 					{Key: "description", Value: scan.Description},
-					{Key: "hosts_array", Value: scan.Hosts},
+					{Key: "hosts_array", Value: scan.HostsArray},
+					{Key: "ports", Value: scan.Ports},
 				}},
 			}
 			_, err = n.DB.Collection(database.ScanCollection).UpdateOne(
@@ -108,9 +109,10 @@ func (n *Nats) startScanQueueGroup() error {
 			nmapResult := services.NmapScan{
 				ID:          scan.Id,
 				Status:      string(api.Complete),
-				ScanType:    api.NewScanType(scan.Type),
+				ScanType:    api.NewScanType(scan.ScanType),
 				Description: scan.Description,
-				HostsArray:  scan.Hosts,
+				HostsArray:  scan.HostsArray,
+				Ports:       scan.Ports,
 				Scan: services.NmapRun{
 					Args:        sRes.Args,
 					Scanner:     sRes.Scanner,

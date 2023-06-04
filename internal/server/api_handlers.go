@@ -120,8 +120,8 @@ func (app *Application) CreateScan(w http.ResponseWriter, r *http.Request) {
 	scan := api.Scan{
 		Id:          generateName(string(ns.Type)),
 		Ports:       ns.Ports,
-		Hosts:       ns.Hosts,
-		Type:        string(ns.Type),
+		HostsArray:  ns.Hosts,
+		ScanType:    string(ns.Type),
 		Status:      api.Scheduled,
 		Description: ns.Description,
 	}

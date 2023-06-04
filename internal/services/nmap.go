@@ -57,13 +57,14 @@ type NmapScan struct {
 	ScanType    api.NewScanType `json:"scan_type,omitempty" bson:"scan_type"`
 	Description string          `json:"description,omitempty" bson:"description"`
 	HostsArray  []string        `json:"hosts_array,omitempty" bson:"hosts_array"`
+	Ports       []string        `json:"ports" bson:"ports"`
 	Scan        NmapRun         `json:"data,omitempty" bson:"data"`
 }
 
 // StartScan is the entrypoint to creating Scan. A cancellable timeout and api.Scan
 // must be passed.
 func StartScan(ctx context.Context, s *api.Scan) (*nmap.Run, error) {
-	scanner, err := ScannerFactory(ctx, s.Hosts, s.Ports, s.Type)
+	scanner, err := ScannerFactory(ctx, s.HostsArray, s.Ports, s.ScanType)
 	if err != nil {
 		return nil, err
 	}

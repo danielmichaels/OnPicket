@@ -47,37 +47,196 @@ type Error struct {
 	Status string `json:"status"`
 }
 
-// Healthz defines model for Healthz.
+// Healthz Healthcheck endpoint for external monitoring.
 type Healthz struct {
 	Status  string `json:"status"`
 	Version string `json:"version"`
 }
 
-// NewScan defines model for NewScan.
+// NewScan Request body for creating a new scan.
 type NewScan struct {
-	Description string      `json:"description"`
-	Hosts       []string    `json:"hosts"`
-	Ports       []string    `json:"ports"`
-	Timeout     *int        `json:"timeout,omitempty"`
-	Type        NewScanType `json:"type"`
+	// Description user entered description for easier identification
+	Description string   `json:"description"`
+	Hosts       []string `json:"hosts"`
+
+	// Ports ports to scan. must be supplied in an array
+	Ports []string `json:"ports"`
+
+	// Timeout time in seconds
+	Timeout *int `json:"timeout,omitempty"`
+
+	// Type type of scan. must be one of the allowed types
+	Type NewScanType `json:"type"`
 }
 
-// NewScanType defines model for NewScan.Type.
+// NewScanType type of scan. must be one of the allowed types
 type NewScanType string
 
 // Scan defines model for Scan.
 type Scan struct {
+	// Data The entire response object for a single scan.
+	Data        ScanData   `json:"data"`
 	Description string     `json:"description"`
-	Hosts       []string   `json:"hosts"`
+	HostsArray  []string   `json:"hosts_array"`
 	Id          string     `json:"id"`
 	Ports       []string   `json:"ports"`
+	ScanType    string     `json:"scan_type"`
 	Status      ScanStatus `json:"status"`
-	Timeout     *int       `json:"timeout,omitempty"`
-	Type        string     `json:"type"`
+	Summary     string     `json:"summary"`
+
+	// Timeout time in seconds
+	Timeout *int `json:"timeout,omitempty"`
 }
 
 // ScanStatus defines model for Scan.Status.
 type ScanStatus string
+
+// ScanData The entire response object for a single scan.
+type ScanData struct {
+	// Args nmap command equivalent
+	Args     *string           `json:"args,omitempty"`
+	Hosts    *[]ScanHostsArray `json:"hosts,omitempty"`
+	Runstats *struct {
+		Finished *struct {
+			Elapsed  *float32 `json:"elapsed,omitempty"`
+			ErrorMsg *string  `json:"error_msg,omitempty"`
+			Exit     *string  `json:"exit,omitempty"`
+			Summary  *string  `json:"summary,omitempty"`
+			Time     *int64   `json:"time,omitempty"`
+			TimeStr  *string  `json:"time_str,omitempty"`
+		} `json:"finished,omitempty"`
+		Hosts *struct {
+			Down  *int `json:"down,omitempty"`
+			Total *int `json:"total,omitempty"`
+			Up    *int `json:"up,omitempty"`
+		} `json:"hosts,omitempty"`
+	} `json:"runstats,omitempty"`
+	ScanInfo *struct {
+		NumServices *int32  `json:"num_services,omitempty"`
+		Protocol    *string `json:"protocol,omitempty"`
+		ScanFlags   *string `json:"scan_flags,omitempty"`
+		Services    *string `json:"services,omitempty"`
+		Type        *string `json:"type,omitempty"`
+	} `json:"scan_info,omitempty"`
+	Scanner *string  `json:"scanner,omitempty"`
+	Start   *float32 `json:"start,omitempty"`
+
+	// StartStr scan start time
+	StartStr *string `json:"start_str,omitempty"`
+	Verbose  *struct {
+		Level *int `json:"level,omitempty"`
+	} `json:"verbose,omitempty"`
+
+	// Version nmap version on server
+	Version *string `json:"version,omitempty"`
+}
+
+// ScanHostsArray The detailed response from a single host during the scan event. Each host will have their own object within the hosts array.
+type ScanHostsArray struct {
+	Addresses *[]struct {
+		Addr     *string `json:"addr,omitempty"`
+		AddrType *string `json:"addr_type,omitempty"`
+		Vendor   *string `json:"vendor,omitempty"`
+	} `json:"addresses,omitempty"`
+	Comment  *string `json:"comment,omitempty"`
+	Distance *struct {
+		Value *int32 `json:"value,omitempty"`
+	} `json:"distance,omitempty"`
+	EndTime    *int64 `json:"end_time,omitempty"`
+	ExtraPorts *[]struct {
+		Count   *int32 `json:"count,omitempty"`
+		Reasons *[]struct {
+			Count  *int32  `json:"count,omitempty"`
+			Reason *string `json:"reason,omitempty"`
+		} `json:"reasons,omitempty"`
+		State *string `json:"state,omitempty"`
+	} `json:"extra_ports,omitempty"`
+	HostScripts *string `json:"host_scripts,omitempty"`
+	Hostnames   *[]struct {
+		Name *string `json:"name,omitempty"`
+		Type *string `json:"type,omitempty"`
+	} `json:"hostnames,omitempty"`
+	IpIdSequence *struct {
+		Class  *string `json:"class,omitempty"`
+		Values *string `json:"values,omitempty"`
+	} `json:"ip_id_sequence,omitempty"`
+	Os *struct {
+		OsFingerprints *string `json:"os_fingerprints,omitempty"`
+		OsMatches      *string `json:"os_matches,omitempty"`
+		PortsUsed      *string `json:"ports_used,omitempty"`
+	} `json:"os,omitempty"`
+	Ports *[]struct {
+		Id    *int32 `json:"id,omitempty"`
+		Owner *struct {
+			Name *string `json:"name,omitempty"`
+		} `json:"owner,omitempty"`
+		Protocol *string `json:"protocol,omitempty"`
+		Scripts  *[]struct {
+			Id     *string `json:"id,omitempty"`
+			Output *string `json:"output,omitempty"`
+			Tables *[]struct {
+				Elements *[]struct {
+					Key   *string `json:"key,omitempty"`
+					Value *string `json:"value,omitempty"`
+				} `json:"elements,omitempty"`
+			} `json:"tables,omitempty"`
+		} `json:"scripts,omitempty"`
+		Service *struct {
+			Confidence  *int32    `json:"confidence,omitempty"`
+			Cpes        *[]string `json:"cpes,omitempty"`
+			DeviceType  *string   `json:"device_type,omitempty"`
+			ExtraInfo   *string   `json:"extra_info,omitempty"`
+			HighVersion *string   `json:"high_version,omitempty"`
+			Hostname    *string   `json:"hostname,omitempty"`
+			LowVersion  *string   `json:"low_version,omitempty"`
+			Method      *string   `json:"method,omitempty"`
+			Name        *string   `json:"name,omitempty"`
+			OsType      *string   `json:"os_type,omitempty"`
+			Product     *string   `json:"product,omitempty"`
+			Proto       *string   `json:"proto,omitempty"`
+			RpcNum      *string   `json:"rpc_num,omitempty"`
+			ServiceFp   *string   `json:"service_fp,omitempty"`
+			Tunnel      *string   `json:"tunnel,omitempty"`
+			Version     *string   `json:"version,omitempty"`
+		} `json:"service,omitempty"`
+		State *struct {
+			Reason    *string `json:"reason,omitempty"`
+			ReasonIp  *string `json:"reason_ip,omitempty"`
+			ReasonTtl *int32  `json:"reason_ttl,omitempty"`
+			State     *string `json:"state,omitempty"`
+		} `json:"state,omitempty"`
+	} `json:"ports,omitempty"`
+	StartTime *int64 `json:"start_time,omitempty"`
+	Status    *struct {
+		Reason    *string `json:"reason,omitempty"`
+		ReasonTtl *int32  `json:"reason_ttl,omitempty"`
+		State     *string `json:"state,omitempty"`
+	} `json:"status,omitempty"`
+	TcpSequence *struct {
+		Difficulty *string `json:"difficulty,omitempty"`
+		Index      *int32  `json:"index,omitempty"`
+		Values     *string `json:"values,omitempty"`
+	} `json:"tcp_sequence,omitempty"`
+	TcpTsSequence *struct {
+		Class  *string `json:"class,omitempty"`
+		Values *string `json:"values,omitempty"`
+	} `json:"tcp_ts_sequence,omitempty"`
+	TimedOut *bool `json:"timed_out,omitempty"`
+	Times    *struct {
+		Rttv *string `json:"rttv,omitempty"`
+		Srtt *string `json:"srtt,omitempty"`
+		To   *string `json:"to,omitempty"`
+	} `json:"times,omitempty"`
+	Trace *struct {
+		Hops  *string `json:"hops,omitempty"`
+		Port  *int32  `json:"port,omitempty"`
+		Proto *string `json:"proto,omitempty"`
+	} `json:"trace,omitempty"`
+	Uptime *struct {
+		LastBoot *string `json:"last_boot,omitempty"`
+		Seconds  *int32  `json:"seconds,omitempty"`
+	} `json:"uptime,omitempty"`
+}
 
 // PageParam defines model for PageParam.
 type PageParam = string
@@ -88,7 +247,7 @@ type PageSizeParam = string
 // PageSortParam defines model for PageSortParam.
 type PageSortParam = string
 
-// ScanBody defines model for ScanBody.
+// ScanBody Request body for creating a new scan.
 type ScanBody = NewScan
 
 // ListScansParams defines parameters for ListScans.
@@ -96,10 +255,10 @@ type ListScansParams struct {
 	// Page page number for pagination
 	Page *PageParam `form:"page,omitempty" json:"page,omitempty"`
 
-	// PageSize page size for pagination
+	// PageSize page size for pagination. default is 20
 	PageSize *PageSizeParam `form:"page_size,omitempty" json:"page_size,omitempty"`
 
-	// Sort sort results
+	// Sort sort results by 'asc' or 'desc'. default is 'asc'
 	Sort *PageSortParam `form:"sort,omitempty" json:"sort,omitempty"`
 }
 
@@ -746,16 +905,16 @@ func ParseRetrieveScanResponse(rsp *http.Response) (*RetrieveScanResponse, error
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Healthcheck endpoint for the API
+	// Healthcheck
 	// (GET /healthz)
 	Healthz(w http.ResponseWriter, r *http.Request)
-	// Return all scans
+	// List Scans
 	// (GET /scans)
 	ListScans(w http.ResponseWriter, r *http.Request, params ListScansParams)
-	// Create a new Scan
+	// Create Scan
 	// (POST /scans)
 	CreateScan(w http.ResponseWriter, r *http.Request)
-	// Retrieve a single scan entry
+	// Retrieve Scan
 	// (GET /scans/{id})
 	RetrieveScan(w http.ResponseWriter, r *http.Request, id string)
 }
@@ -1001,23 +1160,56 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+xX3W7bOBN9FYLfd6lYbnrT6q7tBtgsgjSIscACRWAw1NhiK5EsOYrXCfTuiyEly44k",
-	"11kU3QW6N4YszcyZn6PR4ROXprJGg0bPsydegMjBhcs/zm4FQqkqhWdX9Es3vSygEnSFWws840ojrMHx",
-	"pkkOPG6hEkorvX6hl4dv4TQJt8KJCrBN9Eas4Ybu0J8cvHTKojKaZ9yKNTBdV/fg2Mo4ZsVaaREeJlyR",
-	"xdca3JYnXIsKWgeeDOE9OqqFwAluoR6PQnr1CKcDLsn8FFTjcALVG4fMga9L9BNIZHIUpEm4g681eHxv",
-	"cgWhtwsp9HuTb+laGo2gw3iEtaWSoa70s6cM9kf2fwcrnvH/pT230vjUp9ewoZgR7rCG3xYfr5lZMQ0b",
-	"FmxiPspBzjN0NZBLG4dgLpwzji6sMxYctinft+m25Zn7zyCRNwmXJodh50IUFp4lfGVcJTDS7fU5Twbs",
-	"S7hHgbWfilOB95FCwxH2xXziLV4b7C4ZZvsriBKLx2F9fQLPIBL+AM6rOI3j8G2M3mMsg25UgwwOCh9J",
-	"ozA+bhOFUI1n2t4Qzokt/bfGvdQFVQWmxrEd0Rk/cdB1RQVT/KWPpPLgHpSEZa68NA/xHRncW+awEnVJ",
-	"TlTq/owmehqr7ko5JHfr2w+8SfgP663KR83+Rst76nV9pTe8BOy2V16XkIf9s7TOrB146sRKKLo97OCJ",
-	"Qzzed0WAL2s+hVB6ZSh4qSRoH3DaRfnOClkAO5/NecJrV/KMF4jWZ2m62WxmIjyeGbdOW1+fXl1+uLhe",
-	"XJydz+azAqsyloYlhfuob5T8Asje3VzuvXEZn8/ms1dkaSxoYRXP+OvZPKBagUXoc1r0a2AdP43ElrB5",
-	"L3Oe7dYE9cRbQ9mQ0fl8/qKVvePAsd3dYTUjyzs+Y6Bza5SmD823pMQYUuuTDh2OyYtTI/VOU7Lj9Ejk",
-	"EPvg66oSbrvrgSxAftk1IqgALCBMn8xT2kJ+cp5XyuMiWBzKnE/jyfUmaS+DmuQk417EnOqw0x/N3Y/g",
-	"WxQKz9fQkHtkx0rlgwIKOf2U9LsFrJ1moixZ5FhY8n6EZB8cCIQ9jRU133YqhwNZmO40YTMgwavvphOn",
-	"RGKY9c82ZmpCUCPfrb1RO4/093cNf1qQCDmD1mafY5E5TPQivd9p6ZPKm8nFdgvoFDx0rHu220aGfPlL",
-	"d5Chr2F/jgnf+8ODwbFTzb9rU9VSgveruvyPw/8YhzsmMsG80usSwrpkoNG1Q6PTQMfMXgBmaVoaKUrS",
-	"mtnbN2/fpCTamrvmrwAAAP//XFaowEURAAA=",
+	"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",
+	"kkIvAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

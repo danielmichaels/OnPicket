@@ -38,7 +38,7 @@ func (app *Application) routes(openapi *openapi3.T) http.Handler {
 	router.Get("/status", app.status)
 	router.Group(func(web chi.Router) {
 		web.Get("/", app.home)
-		// web routes
+		web.Get("/docs", app.docs)
 	})
 
 	router.Group(func(oapi chi.Router) {
