@@ -25,6 +25,7 @@ func (app *Application) home(w http.ResponseWriter, r *http.Request) {
 
 	err := response.Page(w, http.StatusOK, data, "pages/home.tmpl")
 	if err != nil {
+		app.Logger.Error().Err(err).Str("template", "pages/home.tmpl").Msg("template render err")
 		app.serverError(w, r, err)
 	}
 }

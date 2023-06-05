@@ -3,8 +3,8 @@ info:
   version: "0.0.1"
   title: "OnPicket API"
   description:
-    On Picket is an external security asset management tool focusing on automated
-    scanning of your external perimeter.
+    On Picket is an [External Attack Surface Management](https://www.hackerone.com/knowledge-center/what-external-attack-surface-management-easm)
+    tool focusing on automated scanning of your external perimeter.
     <br>
     <br>
     On Picket's only scanner so far is `nmap`. Very few `nmap` commands are supported in
@@ -15,6 +15,12 @@ info:
     <br>
     This application is in Alpha development and may have frequent breaking changes
     prior to the first official release.
+    <br>
+    <br>
+    On Picket is an [Open Source project](https://github.com/danielmichaels/OnPicket)
+    <br>
+    <br>
+    [Home](https://onpicket.com)
 
   license:
     name: "Apache 2.0"
@@ -76,12 +82,22 @@ paths:
                   $ref: '#/components/schemas/Scan'
     post:
       summary: Create Scan
+      description:
+        Create a new `scan`. Scans are done in the background but the status can be
+        checked by listing the scans or retrieving a scan by the `id`.
+
+
+        Failed scans do not notify the caller in this version of On Picket.
       operationId: createScan
       requestBody:
         $ref: '#/components/requestBodies/ScanBody'
       responses:
         '201':
-          description: Scan response
+          description:
+            Scan requests return a NewScan object.
+
+
+            The `id` field should be used in `RetrieveScan` to get the detailed output.
           headers:
             X-Ratelimit-Limit:
               $ref: '#/components/headers/X-Ratelimit-Limit'
@@ -92,7 +108,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Scan'
+                $ref: '#/components/schemas/NewScan'
         default:
           description: Unexpected error
           content:
@@ -153,8 +169,25 @@ components:
 
   schemas:
     Scan:
-      summary:
-        Scan object for a given scan.
+      type: object
+      description:
+        Successful scans contain information about the scan, and each host.
+
+
+        Failed scans will be have empty values in the Scan response.
+
+
+        The `data` object is the result of the Scan. `host` information is
+        provided as an array of `hosts`.
+
+
+        Each `hosts` object contains all the information about the host, and is
+        where the majority of your time should be spent when digesting the response
+        data.
+
+
+        Empty fields are not omitted but will return their empty values. This is done
+        to prevent errors due missing indexes during parsing.
       required:
         - id
         - hosts_array
@@ -203,6 +236,7 @@ components:
           $ref: '#/components/schemas/ScanData'
 
     NewScan:
+      type: object
       description:
         Request body for creating a new scan.
       required:
@@ -257,7 +291,7 @@ components:
 
     Healthz:
       description:
-        Healthcheck endpoint for external monitoring.
+        Healthcheck endpoint response.
       type: object
       required:
         - status
@@ -644,7 +678,27 @@ components:
 
   requestBodies:
     ScanBody:
-      description: JSON of new Scan
+      description:
+        Request body
+
+
+        `hosts` may be an array or single host.
+
+
+        Each `type` has a direct `nmap` equivalent and are limited to the following
+        <ul>
+        <li>`port_scan` is `nmap -p <ports> <url>`</li>
+        <li>`service_discovery` is `nmap -p <ports> -sV <url>`</li>
+        <li>`service_discovery_default_scripts` is `nmap -p <ports> -sV -sC <url>`</li>
+        </ul>
+
+        `timeout` is optional with a default. Scans that are expected to take a long time should set this value.
+
+
+        `ports` does not support `-`, to scan all ports use `1-65535` instead. Single ports and ranges are supported.
+
+
+        `description` should be passed with a useful identifier for future reference. The system does not use this value.
       required: true
       content:
         application/json:
